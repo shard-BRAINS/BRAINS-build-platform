@@ -221,6 +221,7 @@ If you'd like to use the platform on your own project, or contribute, see the In
 
 The design and implementation are public.
 
+- [CLI reference](docs/cli-reference.md) — every verb, every option, every output shape
 - [Design spec (2026-05-25)](docs/superpowers/specs/2026-05-25-brains-build-platform-design.md) — architecture, state model, persona contracts, MVP cut
 - [Implementation plan (2026-05-25)](docs/superpowers/plans/2026-05-25-brains-build-platform.md) — 16 TDD tasks, full code, acceptance criteria
 
