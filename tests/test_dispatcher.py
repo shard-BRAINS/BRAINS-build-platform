@@ -108,3 +108,19 @@ def test_prepare_tier2_brief_emits_instruction_file(tmp_path: Path):
     assert "build-backend-sme" in content
     assert "WP-0001" in content
     assert "src/foo.py" in content
+
+
+def test_dispatch_tier1_refuses_oversized_scope(tmp_path: Path):
+    """A tier-1 WP whose scope_files exceed 50KB total must raise before hitting Ollama."""
+    project_root, wp = _seed(tmp_path)
+    big = "x" * 60_000  # 60KB > 50KB cap
+    (project_root / "src" / "foo.py").write_text(big, encoding="utf-8")
+
+    config = OllamaConfig(models=OllamaModels())
+    client = OllamaClient(config)
+    client.chat = MagicMock()  # type: ignore
+
+    with pytest.raises(DispatchError) as ei:
+        dispatch_tier1(project_root, wp, client)
+    assert "50000" in str(ei.value) or "50,000" in str(ei.value) or "scope exceeds" in str(ei.value)
+    assert client.chat.call_count == 0  # never reached Ollama
