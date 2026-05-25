@@ -92,6 +92,21 @@ class ProjectConfig(BaseModel):
     lint_command: str = "ruff check"
 
 
+class ScrumSchedule(BaseModel):
+    """Optional cron reminder for the weekly scrum.
+
+    Registered via the user's `schedule` skill (remote routine). Routines run
+    in Claude's cloud and cannot read the local .brains-build/ directory — so
+    this fires a PushNotification reminding the user to open Claude Code and
+    run /build-scrum themselves. The PMO Lead pass still happens locally.
+    """
+    enabled: bool = False
+    cron: str = "0 9 * * 1"  # 09:00 every Monday (5-field cron: M H DOM MON DOW)
+    routine_id: str | None = None  # populated after the user creates the routine
+    timezone: str = "UTC"
+
+
 class Config(BaseModel):
     ollama: OllamaConfig
     project: ProjectConfig
+    scrum_schedule: ScrumSchedule = Field(default_factory=ScrumSchedule)
