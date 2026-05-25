@@ -1,0 +1,54 @@
+# {{ project.name }} — PMO Dashboard
+_Generated: {{ generated_at }} · Sprint: {{ sprint_number }} · Day {{ day_of_sprint }} of sprint_
+
+## Plan position
+Deliverable sequence: {{ deliverable_sequence or "_None_" }}
+{% if deliverables_total %}Progress: {{ deliverables_done }}/{{ deliverables_total }} deliverables done ({{ progress_pct }}%)
+Current focus: {{ current_focus or "_None_" }}
+Next milestone: {{ next_milestone or "_None_" }}
+What I'd do next: {{ next_action or "_None_" }}
+{% else %}_None_
+{% endif %}
+## Live (right now)
+{% if live %}{% for item in live %}- {{ item }}
+{% endfor %}{% else %}_None_
+{% endif %}
+## Health
+- Active WPs: {{ health.active }} · Blocked: {{ health.blocked }} · Done this sprint: {{ health.done_this_sprint }} · Velocity (3-sprint avg): {{ health.velocity }}
+- Open user-action blockers: {{ health.user_blockers }}{% if health.user_blockers %} ⚠️{% endif %}
+
+## Deliverables
+{% if deliverables %}| ID | Title | Acceptance met | WPs done/total | State |
+|---|---|---|---|---|
+{% for d in deliverables %}| {{ d.id }} | {{ d.title }} | {{ d.acceptance_met }}/{{ d.acceptance_total }} | {{ d.wp_done }}/{{ d.wp_total }} | {{ d.state }} |
+{% endfor %}{% else %}_None_
+{% endif %}
+## Workstreams (this sprint)
+{% if workstreams %}| Workstream | Owner persona | Done | In review | Blocked | Next up |
+|---|---|---|---|---|---|
+{% for w in workstreams %}| {{ w.id }} | {{ w.owner }} | {{ w.done }} | {{ w.in_review }} | {{ w.blocked }} | {{ w.next_up or "—" }} |
+{% endfor %}{% else %}_None_
+{% endif %}
+## Persona activity (last 7 days)
+{% if persona_activity %}| Persona | Dispatches | Avg runtime | Tier-1 share |
+|---|---|---|---|
+{% for p in persona_activity %}| {{ p.persona }} | {{ p.dispatches }} | {{ p.avg_runtime }} | {{ p.tier1_share }} |
+{% endfor %}{% else %}_None_
+{% endif %}
+## Daily completed work (last 7 days)
+{% if daily %}{% for day in daily %}- {{ day.date }}: {{ day.items }}
+{% endfor %}{% else %}_None_
+{% endif %}
+## Open blockers
+{% if blockers %}{% for b in blockers %}- **{{ b.wp_id }}** ({{ b.workstream }}): _{{ b.reason }}_{% if b.needs_user %} → needs user input{% endif %}
+{% if b.suggestion %}  Suggested resolution: {{ b.suggestion }}
+{% endif %}{% endfor %}{% else %}_None_
+{% endif %}
+## Recent decisions (last 7 days)
+{% if decisions %}{% for d in decisions %}- {{ d.date }}: {{ d.title }} (owner: {{ d.owner }}) → {{ d.related }}
+{% endfor %}{% else %}_None_
+{% endif %}
+## Up next (this sprint, in priority order)
+{% if up_next %}{% for wp in up_next %}{{ loop.index }}. {{ wp.id }} — {{ wp.title }} ({{ wp.workstream }}, tier-{{ wp.tier }})
+{% endfor %}{% else %}_None_
+{% endif %}
