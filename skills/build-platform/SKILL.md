@@ -17,6 +17,7 @@ Always check whether one of these matches the user's intent first.
 | `build-package` | "Add work package", "break down deliverable X" |
 | `build-dispatch` | "Dispatch WP-X", "run next" |
 | `build-scrum` | Weekly ritual; "run scrum", "weekly standup" |
+| `build-schedule-scrum` | "Schedule the scrum", "weekly reminder" — registers a cron reminder via the `schedule` skill |
 | `build-status` | "Status of X", "where are we" |
 | `build-decision` | "Log decision", "we decided X" |
 | `build-dashboard` | "Show dashboard" |

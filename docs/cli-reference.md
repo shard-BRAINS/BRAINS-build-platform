@@ -164,6 +164,52 @@ python -m build_platform.cli.scrum --root . --json
 
 ---
 
+## `python -m build_platform.cli.schedule_scrum`
+
+Generate the routine spec for a weekly scrum reminder, and persist the schedule intent in `config.yml`. **Does not** create the remote routine itself — that's the `schedule` skill's job. Output includes the cron expression and routine prompt to pass through.
+
+```powershell
+python -m build_platform.cli.schedule_scrum `
+  --root . `
+  --day mon --hour 9 --minute 0 `
+  --timezone UTC `
+  --json
+```
+
+**Options:**
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `--day` | no | `mon` | One of `mon, tue, wed, thu, fri, sat, sun` |
+| `--hour` | no | `9` | 0-23 |
+| `--minute` | no | `0` | 0-59 |
+| `--timezone` | no | `UTC` | IANA tz id (informational) |
+| `--routine-id` | no | — | Record the id returned by `/schedule` after creation |
+| `--disable` | no | — | Mark `scrum_schedule.enabled = False` in config (does not delete the remote routine) |
+
+**Output:**
+```json
+{
+  "ok": true,
+  "project": "Demo",
+  "project_root": "C:\\path\\to\\project",
+  "enabled": true,
+  "cron": "0 9 * * 1",
+  "timezone": "UTC",
+  "routine_id": null,
+  "routine_prompt": "You are the BRAINS Build Platform scrum reminder...",
+  "next": "Pass cron + routine_prompt to /schedule to create the routine. Then re-run with --routine-id <id> to record it."
+}
+```
+
+**Why the routine only sends a reminder:** remote routines created by `/schedule` run in Claude's cloud and cannot read the local `.brains-build/`. So the routine sends a `PushNotification` reminding the user to run `/build-scrum` themselves. True autonomous remote scrum requires the v2 GitHub mirror.
+
+**Side effects:** Writes `scrum_schedule.{enabled, cron, timezone, routine_id}` to `.brains-build/config.yml`.
+
+**Exit codes:** `0` success · `2` invalid day/hour/minute.
+
+---
+
 ## `python -m build_platform.cli.status`
 
 Read-only query of project or specific WP.

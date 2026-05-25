@@ -161,7 +161,7 @@ cd c:\path\to\new-project
 | 3 | `/build-scrum` | PMO Lead writes the weekly recap, refreshes the dashboard, surfaces blockers |
 | 4 | `/build-dashboard` | Render the current view at `.brains-build/dashboards/current.md` |
 
-Decisions are logged through `/build-decision`. Read-only queries through `/build-status`.
+Decisions are logged through `/build-decision`. Read-only queries through `/build-status`. For automatic weekly cadence, `/build-schedule-scrum` registers a remote routine via the `schedule` skill that pushes a notification to remind you when scrum is due.
 
 ---
 
