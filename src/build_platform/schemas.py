@@ -1,0 +1,95 @@
+"""Pydantic models for all .brains-build/ state files."""
+from enum import Enum
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class WPState(str, Enum):
+    DEFINED = "defined"
+    DISPATCHED = "dispatched"
+    IN_REVIEW = "in_review"
+    DONE = "done"
+    BLOCKED = "blocked"
+
+
+class WPTier(int, Enum):
+    ONE = 1
+    TWO = 2
+
+
+class WPHistoryEvent(BaseModel):
+    at: str  # ISO-8601
+    by: str  # persona id or user:<name>
+    event: str
+
+
+class WorkPackage(BaseModel):
+    id: str
+    title: str
+    workstream: str
+    deliverable_id: str
+    tier: WPTier
+    executor_persona: str
+    spec: str
+    spec_files: list[str] = Field(default_factory=list)
+    acceptance: list[str]
+    depends_on: list[str] = Field(default_factory=list)
+    consult: list[str] = Field(default_factory=list)
+    state: WPState
+    created_by: str
+    created_at: str  # ISO-8601
+    history: list[WPHistoryEvent] = Field(default_factory=list)
+
+
+class Deliverable(BaseModel):
+    id: str
+    title: str
+    why: str
+    acceptance: list[str] = Field(min_length=1)
+    sequence: int
+    state: Literal["not_started", "in_progress", "acceptance_review", "done"]
+
+
+class Workstream(BaseModel):
+    id: str
+    owner_persona: str
+    review_persona: str
+    description: str
+
+
+class Project(BaseModel):
+    name: str
+    mission: str
+    stack: list[str]
+    constraints: list[str]
+    ground_truth: Literal["local"]  # v2 will add "github"
+    created: str  # ISO-8601
+
+
+class OllamaModels(BaseModel):
+    tier1_default: str = "qwen2.5-coder:7b"
+    summarizer: str = "llama3.2:3b"
+    fallback: str = "qwen2.5-coder:7b"
+
+
+class OllamaPreflight(BaseModel):
+    require_running: bool = True
+    auto_pull_missing: bool = False
+
+
+class OllamaConfig(BaseModel):
+    url: str = "http://localhost:11434"
+    timeout_seconds: int = 300
+    models: OllamaModels = Field(default_factory=OllamaModels)
+    preflight: OllamaPreflight = Field(default_factory=OllamaPreflight)
+
+
+class ProjectConfig(BaseModel):
+    test_command: str = "pytest"
+    lint_command: str = "ruff check"
+
+
+class Config(BaseModel):
+    ollama: OllamaConfig
+    project: ProjectConfig
