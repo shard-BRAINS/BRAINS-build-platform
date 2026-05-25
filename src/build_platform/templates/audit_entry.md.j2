@@ -1,0 +1,23 @@
+# {{ wp_id }} dispatch · {{ timestamp }}
+
+**Persona:** {{ persona }} · **Model:** {{ model }} · **Tier:** {{ tier }}
+**Runtime:** {{ runtime_seconds }}s · **Result:** {{ result }}
+
+## Inputs read
+{% if inputs_read %}{% for f in inputs_read %}- {{ f }}
+{% endfor %}{% else %}_None_
+{% endif %}
+## Outputs written
+{% if outputs_written %}{% for f in outputs_written %}- {{ f }}
+{% endfor %}{% else %}_None_
+{% endif %}
+## Decisions logged
+{% if decisions_logged %}{% for d in decisions_logged %}- {{ d }}
+{% endfor %}{% else %}_None_
+{% endif %}
+## Tests run
+{% if tests_run %}{% for cmd, result in tests_run %}- `{{ cmd }}` → {{ result }}
+{% endfor %}{% else %}_None_
+{% endif %}
+## Notes
+{{ notes or "_None_" }}
