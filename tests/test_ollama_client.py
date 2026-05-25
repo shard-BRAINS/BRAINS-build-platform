@@ -79,3 +79,59 @@ def test_chat_raises_ollama_error_on_http_error(monkeypatch):
     client = OllamaClient(_config())
     with pytest.raises(OllamaError):
         client.chat(model="qwen2.5-coder:7b", prompt="hi")
+
+
+def test_chat_retries_transient_then_succeeds(monkeypatch):
+    monkeypatch.setattr("build_platform.ollama_client.time.sleep", lambda s: None)
+    call_count = {"n": 0}
+    fake_response = MagicMock()
+    fake_response.json.return_value = {"message": {"role": "assistant", "content": "ok"}}
+    fake_response.raise_for_status.return_value = None
+
+    def flaky_post(self, url, **kw):
+        call_count["n"] += 1
+        if call_count["n"] < 3:
+            raise httpx.ConnectError("transient")
+        return fake_response
+
+    monkeypatch.setattr(httpx.Client, "post", flaky_post)
+    client = OllamaClient(_config())
+    assert client.chat(model="qwen2.5-coder:7b", prompt="hi") == "ok"
+    assert call_count["n"] == 3
+
+
+def test_chat_gives_up_after_max_retries(monkeypatch):
+    monkeypatch.setattr("build_platform.ollama_client.time.sleep", lambda s: None)
+    call_count = {"n": 0}
+
+    def always_fails(self, url, **kw):
+        call_count["n"] += 1
+        raise httpx.ConnectError("down")
+
+    monkeypatch.setattr(httpx.Client, "post", always_fails)
+    client = OllamaClient(_config())
+    with pytest.raises(OllamaError) as ei:
+        client.chat(model="qwen2.5-coder:7b", prompt="hi")
+    assert call_count["n"] == 3  # default max_retries
+    assert "after 3 attempts" in str(ei.value)
+
+
+def test_chat_does_not_retry_on_http_status_error(monkeypatch):
+    monkeypatch.setattr("build_platform.ollama_client.time.sleep", lambda s: None)
+    call_count = {"n": 0}
+    fake_response = MagicMock()
+
+    def raise_status():
+        raise httpx.HTTPStatusError("500", request=MagicMock(), response=MagicMock())
+
+    fake_response.raise_for_status.side_effect = raise_status
+
+    def post(self, url, **kw):
+        call_count["n"] += 1
+        return fake_response
+
+    monkeypatch.setattr(httpx.Client, "post", post)
+    client = OllamaClient(_config())
+    with pytest.raises(OllamaError):
+        client.chat(model="qwen2.5-coder:7b", prompt="hi")
+    assert call_count["n"] == 1  # no retries on HTTP status errors

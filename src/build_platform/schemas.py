@@ -81,6 +81,8 @@ class OllamaPreflight(BaseModel):
 class OllamaConfig(BaseModel):
     url: str = "http://localhost:11434"
     timeout_seconds: int = 300
+    max_retries: int = 3  # transient network errors only; HTTP error codes not retried
+    retry_backoff_base_seconds: float = 1.0  # backoff is base * 2**attempt
     models: OllamaModels = Field(default_factory=OllamaModels)
     preflight: OllamaPreflight = Field(default_factory=OllamaPreflight)
 

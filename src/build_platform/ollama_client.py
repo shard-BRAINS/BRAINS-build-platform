@@ -1,7 +1,14 @@
 """HTTP client for a locally-running Ollama instance."""
+import time
+
 import httpx
 
 from build_platform.schemas import OllamaConfig
+
+# Transient errors worth retrying. HTTP status errors are NOT retried — a 4xx
+# won't be fixed by waiting, and a 5xx from Ollama usually indicates a real
+# server-side problem the user needs to see.
+_TRANSIENT_ERRORS = (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout)
 
 
 class OllamaError(RuntimeError):
@@ -46,15 +53,32 @@ class OllamaClient:
             )
 
     def chat(self, model: str, prompt: str, *, system: str | None = None) -> str:
-        """Send a one-shot chat request; return assistant content."""
+        """Send a one-shot chat request; return assistant content.
+
+        Retries on transient network errors (ConnectError, timeouts) with
+        exponential backoff. HTTP status errors are not retried.
+        """
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         payload = {"model": model, "messages": messages, "stream": False}
-        try:
-            r = self._client.post("/api/chat", json=payload)
-            r.raise_for_status()
-        except httpx.HTTPError as e:
-            raise OllamaError(f"Ollama chat failed: {e}") from e
-        return r.json()["message"]["content"]
+
+        last_transient: Exception | None = None
+        for attempt in range(self.config.max_retries):
+            try:
+                r = self._client.post("/api/chat", json=payload)
+                r.raise_for_status()
+                return r.json()["message"]["content"]
+            except _TRANSIENT_ERRORS as e:
+                last_transient = e
+                if attempt < self.config.max_retries - 1:
+                    time.sleep(self.config.retry_backoff_base_seconds * (2 ** attempt))
+                    continue
+                raise OllamaError(
+                    f"Ollama chat failed after {self.config.max_retries} attempts: {e}"
+                ) from e
+            except httpx.HTTPError as e:
+                raise OllamaError(f"Ollama chat failed: {e}") from e
+        # Unreachable, but mypy/safety: surface the last transient if loop exits
+        raise OllamaError(f"Ollama chat exhausted retries: {last_transient}")
