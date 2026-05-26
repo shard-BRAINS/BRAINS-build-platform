@@ -63,7 +63,10 @@ class Project(BaseModel):
     mission: str
     stack: list[str]
     constraints: list[str]
-    ground_truth: Literal["local"]  # v2 will add "github"
+    # "local" — files are canonical (v1 default).
+    # "github" — files are still canonical for writes; GitHub is a one-way mirror (v2.5).
+    # Future "github-canonical" would mean GitHub is source of truth.
+    ground_truth: Literal["local", "github"] = "local"
     created: str  # ISO-8601
 
 
@@ -106,7 +109,20 @@ class ScrumSchedule(BaseModel):
     timezone: str = "UTC"
 
 
+class GitHubMirrorConfig(BaseModel):
+    """One-way push mirror to GitHub Issues + Milestones (v2.5).
+
+    Disabled by default. Configure via `/build-mirror init --owner X --repo Y`.
+    """
+    enabled: bool = False
+    owner: str | None = None
+    repo: str | None = None
+    label_prefix: str = "bbp:"  # namespace for platform-managed labels
+    last_synced_at: str | None = None  # ISO-8601 of last successful push
+
+
 class Config(BaseModel):
     ollama: OllamaConfig
     project: ProjectConfig
     scrum_schedule: ScrumSchedule = Field(default_factory=ScrumSchedule)
+    github: GitHubMirrorConfig = Field(default_factory=GitHubMirrorConfig)

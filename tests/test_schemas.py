@@ -34,8 +34,16 @@ def test_project_rejects_unknown_ground_truth():
     with pytest.raises(ValidationError):
         Project(
             name="x", mission="y", stack=[], constraints=[],
-            ground_truth="github", created="2026-05-25T10:00:00Z",
+            ground_truth="s3-bucket", created="2026-05-25T10:00:00Z",
         )
+
+
+def test_project_accepts_local_and_github_ground_truth():
+    # local is v1, github is v2.5 (one-way mirror; files still canonical for writes)
+    Project(name="x", mission="y", stack=[], constraints=[],
+            ground_truth="local", created="2026-05-25T10:00:00Z")
+    Project(name="x", mission="y", stack=[], constraints=[],
+            ground_truth="github", created="2026-05-25T10:00:00Z")
 
 
 def test_deliverable_acceptance_required():

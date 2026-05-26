@@ -265,6 +265,64 @@ python -m build_platform.cli.decision --root . `
 
 ---
 
+## `python -m build_platform.cli.mirror`
+
+One-way push mirror of WPs + sprints to GitHub Issues + Milestones. Uses your existing `gh` CLI auth. Click group with three subcommands: `init`, `push`, `status`.
+
+### `mirror init`
+
+```powershell
+python -m build_platform.cli.mirror init `
+  --root . --owner shard-BRAINS --repo my-project --json
+```
+
+**Options:** `--owner` (required), `--repo` (required), `--label-prefix` (default `bbp:`), `--disable` (turn the mirror off without losing config).
+
+Writes `github.{enabled, owner, repo, label_prefix}` to `.brains-build/config.yml`.
+
+### `mirror push`
+
+```powershell
+python -m build_platform.cli.mirror push --root . --json
+```
+
+Reconciles everything. On first run, seeds platform labels (state-*, tier-1/2, workstream-*, deliverable-*, persona-*) and creates a milestone per sprint file. For each WP, creates an issue or edits the mapped one. Closes on `state=done`, reopens on `state=blocked`. Persists wp_id → issue_number map at `.brains-build/github-mirror.json`. Idempotent.
+
+**Output:**
+```json
+{
+  "ok": true,
+  "repo": "shard-BRAINS/my-project",
+  "wps_pushed": 7,
+  "sprints_milestoned": 2,
+  "issues": [{"wp_id": "WP-0001", "issue": 100}, ...],
+  "last_synced_at": "2026-05-26T..."
+}
+```
+
+**Exit codes:** `0` success · `2` mirror disabled or `gh` failure.
+
+### `mirror status`
+
+```powershell
+python -m build_platform.cli.mirror status --root . --json
+```
+
+Reads local config + mirror map only — does not hit the network. Returns `{enabled, owner, repo, label_prefix, last_synced_at, wps_mirrored, sprints_mirrored, labels_seeded}`.
+
+### Mapping reference
+
+| Local | GitHub |
+|---|---|
+| `WorkPackage` | Issue |
+| `sprints/sprint-NN.md` | Milestone |
+| `Deliverable` / `Workstream` / `Executor persona` / `Tier` / `WPState` | Labels (prefixed) |
+| `decisions.md` / `audit/` / `dashboards/` | Not mirrored |
+
+The mirror is **one-way**. Manual edits on GitHub won't flow back to local — that's v2.6.
+
+---
+
 ## `python -m build_platform.cli.portfolio`
 
 Cross-project portfolio. Click group with subcommands `register`, `unregister`, `list`, `view`. Registry lives at `~/.brains-build-portfolio.yml`.

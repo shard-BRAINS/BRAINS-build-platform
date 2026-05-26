@@ -23,6 +23,7 @@ Always check whether one of these matches the user's intent first.
 | `build-dashboard` | "Show dashboard" |
 | `build-persona` | "Add a Data SME", "register a new persona", "list personas" — custom personas beyond the default 8 |
 | `build-portfolio` | "How are all my projects doing", "portfolio view", "rollup across projects" — cross-project aggregation |
+| `build-mirror` | "Push to GitHub", "sync to GitHub", "mirror this build" — one-way push of WPs/sprints to GitHub Issues + Milestones |
 
 ## State of record
 
