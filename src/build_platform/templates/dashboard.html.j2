@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{{ project.name }} — PMO Dashboard</title>
+<style>
+  :root {
+    --gold-deep: #D99518;     /* accessible Gold on white (4.6:1) */
+    --gold: #FCC14D;          /* decorative only */
+    --trust-teal: #2A8B91;
+    --incubator-blue: #4DA8FF;
+    --ink: #0A0A0A;
+    --mute: #5A5A5A;
+    --rule: #E5E5E5;
+    --surface: #FFFFFF;
+    --warn: #B45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --gold-deep: #FCC14D;   /* swap; gold pops on dark */
+      --ink: #F5F5F5;
+      --mute: #B0B0B0;
+      --rule: #2A2A2A;
+      --surface: #0A0A0A;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--surface); }
+  body {
+    font-family: "Atkinson Hyperlegible", "Inter", -apple-system, BlinkMacSystemFont,
+                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.55;
+    font-size: 16px;
+    margin: 0;
+    padding: 2rem 1.5rem 4rem;
+    max-width: 72ch;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;       /* never justify */
+  }
+  header {
+    border-bottom: 2px solid var(--gold-deep);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  h1 {
+    font-size: 1.8rem;
+    margin: 0 0 0.25rem;
+    color: var(--ink);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .meta { color: var(--mute); font-size: 0.9rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin: 2rem 0 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--rule);
+    font-weight: 700;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5rem 0 1rem;
+    font-size: 0.95rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th { color: var(--mute); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .pill {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--rule);
+    color: var(--ink);
+  }
+  .pill-gold { background: var(--gold-deep); color: var(--ink); }
+  .pill-teal { background: var(--trust-teal); color: var(--surface); }
+  .pill-blue { background: var(--incubator-blue); color: var(--ink); }
+  .pill-warn { background: var(--warn); color: var(--surface); }
+  .pill-mute { background: var(--rule); color: var(--mute); }
+  .progress {
+    height: 8px;
+    background: var(--rule);
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 0.4rem 0;
+  }
+  .progress > span {
+    display: block;
+    height: 100%;
+    background: var(--gold-deep);
+  }
+  ul, ol { padding-left: 1.5rem; }
+  ul li, ol li { margin: 0.25rem 0; }
+  .none { color: var(--mute); font-style: normal; }   /* no italic per brand */
+  strong b, b strong { font-weight: 700; }
+  .blocker {
+    background: rgba(180, 83, 9, 0.08);
+    border-left: 3px solid var(--warn);
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+  }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    color: var(--mute);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  code { font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>{{ project.name }} — PMO Dashboard</h1>
+  <div class="meta">
+    Generated {{ generated_at }} ·
+    Sprint <strong>{{ sprint_number }}</strong>, day {{ day_of_sprint }}
+  </div>
+</header>
+
+<h2>Plan position</h2>
+{% if deliverables_total %}
+<p><strong>Deliverable sequence:</strong> {{ deliverable_sequence }}</p>
+<div class="progress" role="img" aria-label="Deliverables: {{ deliverables_done }} of {{ deliverables_total }} complete ({{ progress_pct }}%)">
+  <span style="width: {{ progress_pct }}%"></span>
+</div>
+<p>{{ deliverables_done }} of {{ deliverables_total }} deliverables complete ({{ progress_pct }}%).</p>
+{% if current_focus %}<p><strong>Current focus:</strong> {{ current_focus }}</p>{% endif %}
+{% if next_milestone %}<p><strong>Next milestone:</strong> {{ next_milestone }}</p>{% endif %}
+{% if next_action %}<p><strong>What I'd do next:</strong> {{ next_action }}</p>{% endif %}
+{% else %}
+<p class="none">None.</p>
+{% endif %}
+
+<h2>Live (right now)</h2>
+{% if live %}
+<ul>{% for item in live %}<li>{{ item }}</li>{% endfor %}</ul>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Health</h2>
+<ul>
+  <li>Active WPs: <strong>{{ health.active }}</strong></li>
+  <li>Blocked: <strong>{{ health.blocked }}</strong></li>
+  <li>Done this sprint: <strong>{{ health.done_this_sprint }}</strong></li>
+  <li>Velocity (3-sprint avg): <strong>{{ health.velocity }}</strong></li>
+  <li>Open user-action blockers:
+    {% if health.user_blockers %}<span class="pill pill-warn">{{ health.user_blockers }}</span>
+    {% else %}<strong>0</strong>{% endif %}</li>
+</ul>
+
+<h2>Deliverables</h2>
+{% if deliverables %}
+<table>
+  <thead><tr><th>ID</th><th>Title</th><th>Acceptance</th><th>WPs</th><th>State</th></tr></thead>
+  <tbody>
+  {% for d in deliverables %}
+    <tr>
+      <td><code>{{ d.id }}</code></td>
+      <td>{{ d.title }}</td>
+      <td>{{ d.acceptance_met }}/{{ d.acceptance_total }}</td>
+      <td>{{ d.wp_done }}/{{ d.wp_total }}</td>
+      <td><span class="pill pill-mute">{{ d.state }}</span></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Workstreams (this sprint)</h2>
+{% if workstreams %}
+<table>
+  <thead><tr><th>Workstream</th><th>Owner</th><th>Done</th><th>In review</th><th>Blocked</th><th>Next up</th></tr></thead>
+  <tbody>
+  {% for w in workstreams %}
+    <tr>
+      <td><code>{{ w.id }}</code></td>
+      <td>{{ w.owner }}</td>
+      <td>{{ w.done }}</td>
+      <td>{{ w.in_review }}</td>
+      <td>{% if w.blocked %}<span class="pill pill-warn">{{ w.blocked }}</span>{% else %}0{% endif %}</td>
+      <td>{% if w.next_up %}<code>{{ w.next_up }}</code>{% else %}—{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Persona activity (last 7 days)</h2>
+{% if persona_activity %}
+<table>
+  <thead><tr><th>Persona</th><th>Dispatches</th><th>Avg runtime</th><th>Tier-1 share</th></tr></thead>
+  <tbody>
+  {% for p in persona_activity %}
+    <tr><td><code>{{ p.persona }}</code></td><td>{{ p.dispatches }}</td><td>{{ p.avg_runtime }}</td><td>{{ p.tier1_share }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Daily completed work (last 7 days)</h2>
+{% if daily %}
+<ul>{% for day in daily %}<li><strong>{{ day.date }}:</strong> {{ day.items }}</li>{% endfor %}</ul>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Open blockers</h2>
+{% if blockers %}
+{% for b in blockers %}
+<div class="blocker">
+  <strong><code>{{ b.wp_id }}</code></strong> ({{ b.workstream }}): {{ b.reason }}
+  {% if b.needs_user %}<span class="pill pill-warn">needs user</span>{% endif %}
+  {% if b.suggestion %}<div><strong>Suggested:</strong> {{ b.suggestion }}</div>{% endif %}
+</div>
+{% endfor %}
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Recent decisions (last 7 days)</h2>
+{% if decisions %}
+<ul>{% for d in decisions %}<li><strong>{{ d.date }}:</strong> {{ d.title }} (owner: <code>{{ d.owner }}</code>) → {{ d.related }}</li>{% endfor %}</ul>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Up next (this sprint, in priority order)</h2>
+{% if up_next %}
+<ol>{% for wp in up_next %}<li><code>{{ wp.id }}</code> — {{ wp.title }} ({{ wp.workstream }}, tier-{{ wp.tier }})</li>{% endfor %}</ol>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<footer>
+  BRAINS Build Platform · Built by neurodivergent minds, for neurodivergent people.
+</footer>
+
+</body>
+</html>

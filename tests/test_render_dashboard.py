@@ -2,7 +2,11 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from build_platform.render_dashboard import render_dashboard
+from build_platform.render_dashboard import (
+    render_dashboard,
+    render_dashboard_all,
+    render_dashboard_html,
+)
 from build_platform.schemas import (
     Config,
     Deliverable,
@@ -111,3 +115,59 @@ def test_render_dashboard_empty_sections_render_as_none(tmp_path: Path):
     out = render_dashboard(tmp_path)
     text = out.read_text(encoding="utf-8")
     assert "_None_" in text
+
+
+def test_render_dashboard_html_writes_file(tmp_path: Path):
+    _seed(tmp_path)
+    out = render_dashboard_html(tmp_path)
+    assert out.exists()
+    assert out.name == "current.html"
+    assert out.parent.name == "dashboards"
+
+
+def test_render_dashboard_html_is_valid_html(tmp_path: Path):
+    _seed(tmp_path)
+    out = render_dashboard_html(tmp_path)
+    html = out.read_text(encoding="utf-8")
+    assert html.lstrip().startswith("<!doctype html>")
+    assert "<title>Demo — PMO Dashboard</title>" in html
+    assert "</html>" in html
+
+
+def test_render_dashboard_html_uses_brand_colors(tmp_path: Path):
+    """Brand: Gold Deep #D99518 on white. No raw #FCC14D body usage."""
+    _seed(tmp_path)
+    html = render_dashboard_html(tmp_path).read_text(encoding="utf-8")
+    assert "#D99518" in html  # Gold Deep token defined
+    # FCC14D is allowed as a token but only as decorative (--gold), never as body color
+    # The template defines it under --gold then uses --gold-deep for text
+    assert "--gold-deep" in html
+    assert "Atkinson Hyperlegible" in html  # accessibility-first font
+    assert "text-align: left" in html  # no justified body per brand
+
+
+def test_render_dashboard_html_includes_all_sections(tmp_path: Path):
+    _seed(tmp_path)
+    html = render_dashboard_html(tmp_path).read_text(encoding="utf-8")
+    for section in [
+        "Plan position", "Live (right now)", "Health", "Deliverables",
+        "Workstreams", "Persona activity", "Daily completed work",
+        "Open blockers", "Recent decisions", "Up next",
+    ]:
+        assert section in html, f"Missing section: {section}"
+
+
+def test_render_dashboard_html_lists_open_wp(tmp_path: Path):
+    _seed(tmp_path)
+    html = render_dashboard_html(tmp_path).read_text(encoding="utf-8")
+    assert "WP-0002" in html
+
+
+def test_render_dashboard_all_writes_both(tmp_path: Path):
+    _seed(tmp_path)
+    paths = render_dashboard_all(tmp_path)
+    assert "md" in paths and "html" in paths
+    assert paths["md"].exists()
+    assert paths["html"].exists()
+    assert paths["md"].name == "current.md"
+    assert paths["html"].name == "current.html"

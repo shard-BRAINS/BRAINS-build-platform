@@ -16,8 +16,8 @@ from build_platform.state import (
 )
 
 
-def _template() -> Template:
-    src = files("build_platform.templates").joinpath("dashboard.md.j2").read_text(encoding="utf-8")
+def _template(filename: str = "dashboard.md.j2") -> Template:
+    src = files("build_platform.templates").joinpath(filename).read_text(encoding="utf-8")
     return Template(src, keep_trailing_newline=True)
 
 
@@ -50,7 +50,8 @@ def _live(project_root: Path) -> list[str]:
     return out
 
 
-def render_dashboard(project_root: Path) -> Path:
+def _assemble_context(project_root: Path) -> dict:
+    """Compute the data the dashboard templates render. Shared between md + html."""
     project = load_project(project_root)
     deliverables = load_deliverables(project_root)
     workstreams = load_workstreams(project_root)
@@ -122,7 +123,7 @@ def render_dashboard(project_root: Path) -> Path:
         "id": wp.id, "title": wp.title, "workstream": wp.workstream, "tier": int(wp.tier.value),
     } for wp in sorted(wps, key=lambda w: w.id) if wp.state == WPState.DEFINED][:10]
 
-    rendered = _template().render(
+    return dict(
         project=project,
         generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         sprint_number=_sprint_number(project_root),
@@ -145,8 +146,32 @@ def render_dashboard(project_root: Path) -> Path:
         up_next=up_next,
     )
 
+
+def render_dashboard(project_root: Path) -> Path:
+    """Render the markdown dashboard. Returns its path."""
+    ctx = _assemble_context(project_root)
+    rendered = _template("dashboard.md.j2").render(**ctx)
     out_dir = state_dir(project_root) / "dashboards"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "current.md"
     out.write_text(rendered, encoding="utf-8")
     return out
+
+
+def render_dashboard_html(project_root: Path) -> Path:
+    """Render the HTML dashboard. Returns its path."""
+    ctx = _assemble_context(project_root)
+    rendered = _template("dashboard.html.j2").render(**ctx)
+    out_dir = state_dir(project_root) / "dashboards"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "current.html"
+    out.write_text(rendered, encoding="utf-8")
+    return out
+
+
+def render_dashboard_all(project_root: Path) -> dict[str, Path]:
+    """Render markdown + HTML side by side. Returns a {format: path} map."""
+    return {
+        "md": render_dashboard(project_root),
+        "html": render_dashboard_html(project_root),
+    }

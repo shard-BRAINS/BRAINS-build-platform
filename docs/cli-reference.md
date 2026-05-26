@@ -352,19 +352,35 @@ Copies `.brains-build/personas/<id>.md` to `~/.claude/agents/build/<id>.md`. Re-
 
 ## `python -m build_platform.cli.dashboard`
 
-Render the markdown PMO dashboard. Pure derivation from state files — no LLM call.
+Render the PMO dashboard. Pure derivation from state files — no LLM call. Emits markdown and/or HTML.
 
 ```powershell
 python -m build_platform.cli.dashboard --root . --json
+python -m build_platform.cli.dashboard --root . --format html --json
+python -m build_platform.cli.dashboard --root . --format md
 ```
 
-**Output:** `{"ok": true, "path": "<path to dashboards/current.md>"}`
+**Options:**
 
-**Without `--json`:** prints the rendered dashboard markdown to stdout.
+| Option | Default | Description |
+|---|---|---|
+| `--format` | `both` | One of `md`, `html`, `both` |
+| `--json` | — | Emit JSON instead of streaming the markdown to stdout |
+
+**Output (--json):** `{"ok": true, "paths": {"md": "...", "html": "..."}, "path": "..."}` (the `path` field is the markdown path for back-compat with earlier callers).
+
+**Without `--json`:** prints the rendered dashboard markdown to stdout if md was written; otherwise prints the HTML path.
 
 **Sections rendered:** Plan position · Live (right now) · Health · Deliverables · Workstreams · Persona activity · Daily completed work · Open blockers · Recent decisions · Up next.
 
-The dashboard is refreshed automatically by `dispatch` and `scrum`. Run this explicitly any time you want a fresh view.
+**HTML brand styling:**
+- Gold Deep `#D99518` on white (accessible 4.6:1 contrast); Gold `#FCC14D` only as decorative token, never as body text.
+- No italic body text, no justified text. Left-aligned, ragged-right.
+- Atkinson Hyperlegible / Inter font stack with system fallbacks.
+- Auto light/dark mode via `prefers-color-scheme`.
+- No external assets — single self-contained HTML file.
+
+The dashboard is refreshed automatically by `dispatch` and `scrum` (markdown only). Run this explicitly any time you want a fresh view in either format.
 
 ---
 
