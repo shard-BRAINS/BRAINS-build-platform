@@ -33,7 +33,13 @@ What you do:
 
     Then spawn `build-qa-sme` to verify acceptance criteria.
   - **request changes** → write feedback to `.brains-build/runs/<wp-id>/review.md` and re-run the dispatch CLI (it picks up the feedback on next attempt).
-  - **reject** → re-tag the WP as tier-2 via a new `/build-package` invocation; mark the current WP as blocked.
+  - **reject** → run the reject CLI to atomically transition + audit:
+
+    ```powershell
+    python -m build_platform.cli.dispatch_reject --root . --wp WP-XXXX --reason "..." --json
+    # Or, if the WP should be re-packaged as tier-2:
+    python -m build_platform.cli.dispatch_reject --root . --wp WP-XXXX --reason "..." --retier --json
+    ```
 
 ### Tier-2 (Claude subagent) response
 ```json
