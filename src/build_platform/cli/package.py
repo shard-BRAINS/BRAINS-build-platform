@@ -9,7 +9,7 @@ import click
 
 from build_platform.paths import find_brains_build_root
 from build_platform.schemas import WorkPackage, WPState, WPTier
-from build_platform.state import append_work_package, next_wp_id
+from build_platform.state import append_work_package, load_work_packages, next_wp_id
 
 
 @click.command("package")
@@ -29,6 +29,19 @@ from build_platform.state import append_work_package, next_wp_id
 def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
                 spec, spec_files, acceptance, depends_on, consult, created_by, as_json):
     root_path = Path(root).resolve() if root else find_brains_build_root()
+    existing_wps = load_work_packages(root_path)
+    existing_ids = {wp.id for wp in existing_wps}
+
+    # Finding #1: reject orphan --depends-on IDs at WP-creation time, not at dispatch.
+    orphans = [d for d in depends_on if d not in existing_ids]
+    if orphans:
+        payload = {
+            "error": f"Unknown WP IDs in --depends-on: {orphans}. "
+                     f"Use /build-status to see existing WPs."
+        }
+        click.echo(json.dumps(payload) if as_json else payload["error"], err=True)
+        sys.exit(2)
+
     wp_id = next_wp_id(root_path)
     wp = WorkPackage(
         id=wp_id, title=title, workstream=workstream, deliverable_id=deliverable_id,
