@@ -111,6 +111,30 @@ def test_prepare_tier2_brief_emits_instruction_file(tmp_path: Path):
     assert "src/foo.py" in content
 
 
+def test_tier1_prompt_contains_scope_discipline_section(tmp_path: Path):
+    """Finding #3: tier-1 prompt must contain explicit anti-speculation language."""
+    project_root, wp = _seed(tmp_path)
+    config = OllamaConfig(models=OllamaModels())
+    client = OllamaClient(config)
+    captured: dict = {}
+
+    def capture_chat(*, model, prompt, system=None):
+        captured["prompt"] = prompt
+        return DIFF_SAMPLE
+
+    client.chat = capture_chat  # type: ignore
+    dispatch_tier1(project_root, wp, client)
+    p = captured["prompt"]
+    # Anti-speculation language
+    assert "Scope discipline" in p
+    assert "speculative" in p.lower() or "speculation" in p.lower()
+    assert "SEPARATE work package" in p or "separate WP" in p.lower()
+    # Self-check section
+    assert "Self-check before outputting" in p
+    # Empty-diff escape hatch
+    assert "empty diff" in p.lower()
+
+
 def test_strip_markdown_fences_removes_diff_block():
     """Ollama sometimes wraps output in ```diff ... ``` fences. Strip them."""
     wrapped = "```diff\n" + DIFF_SAMPLE.strip() + "\n```\n"
