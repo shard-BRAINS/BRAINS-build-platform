@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BRAINS Build Platform — Portfolio</title>
+<style>
+  :root {
+    --gold-deep: #D99518;
+    --trust-teal: #2A8B91;
+    --incubator-blue: #4DA8FF;
+    --ink: #0A0A0A;
+    --mute: #5A5A5A;
+    --rule: #E5E5E5;
+    --surface: #FFFFFF;
+    --warn: #B45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --gold-deep: #FCC14D; --ink: #F5F5F5; --mute: #B0B0B0; --rule: #2A2A2A; --surface: #0A0A0A; }
+  }
+  html { background: var(--surface); }
+  body {
+    font-family: "Atkinson Hyperlegible", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    line-height: 1.55;
+    margin: 0;
+    padding: 2rem 1.5rem 4rem;
+    max-width: 100ch;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+  }
+  header { border-bottom: 2px solid var(--gold-deep); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+  h1 { font-size: 1.8rem; margin: 0 0 0.25rem; font-weight: 800; letter-spacing: -0.01em; }
+  .meta { color: var(--mute); font-size: 0.9rem; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--mute); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.project { font-weight: 700; }
+  .progress { display: inline-block; width: 80px; height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; vertical-align: middle; margin-right: 0.4rem; }
+  .progress > span { display: block; height: 100%; background: var(--gold-deep); }
+  .pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+  .pill-warn { background: var(--warn); color: var(--surface); }
+  .pill-mute { background: var(--rule); color: var(--mute); }
+  .pill-ok { background: var(--trust-teal); color: var(--surface); }
+  code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 0.9em; color: var(--mute); }
+  .empty { color: var(--mute); padding: 2rem; text-align: center; border: 1px dashed var(--rule); border-radius: 8px; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--mute); font-size: 0.8rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BRAINS Build Platform — Portfolio</h1>
+  <div class="meta">Generated {{ generated_at }} · {{ count }} project{{ "s" if count != 1 else "" }}</div>
+</header>
+
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>Project</th><th>Mission</th><th>Deliverables</th>
+      <th>Active</th><th>Blocked</th><th>Last activity</th><th>Path</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+  {% if r.get("error") %}
+    <tr>
+      <td class="project"><em>error</em></td>
+      <td><span class="pill pill-warn">{{ r.error }}</span></td>
+      <td>—</td><td>—</td><td>—</td><td>—</td>
+      <td><code>{{ r.path }}</code></td>
+    </tr>
+  {% else %}
+    <tr>
+      <td class="project">{{ r.name }}</td>
+      <td>{{ r.mission }}</td>
+      <td>
+        <span class="progress" role="img" aria-label="{{ r.progress_pct }}% complete"><span style="width: {{ r.progress_pct }}%"></span></span>
+        {{ r.deliverables_done }}/{{ r.deliverables_total }} ({{ r.progress_pct }}%)
+      </td>
+      <td>{{ r.wps_active }}</td>
+      <td>{% if r.wps_blocked %}<span class="pill pill-warn">{{ r.wps_blocked }}</span>{% else %}<span class="pill pill-ok">0</span>{% endif %}</td>
+      <td>{{ r.last_activity or "—" }}</td>
+      <td><code>{{ r.path }}</code></td>
+    </tr>
+  {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">
+  No projects registered. Run<br />
+  <code>python -m build_platform.cli.portfolio register &lt;path&gt;</code><br />
+  to add one.
+</div>
+{% endif %}
+
+<footer>
+  BRAINS Build Platform · Built by neurodivergent minds, for neurodivergent people.
+</footer>
+
+</body>
+</html>

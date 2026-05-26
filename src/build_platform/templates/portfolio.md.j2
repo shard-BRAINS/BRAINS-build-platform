@@ -1,0 +1,9 @@
+# BRAINS Build Platform — Portfolio
+_Generated: {{ generated_at }} · {{ count }} projects_
+
+{% if rows %}| Project | Mission | Deliverables | Active | Blocked | Last activity | Path |
+|---|---|---|---|---|---|---|
+{% for r in rows %}{% if r.get("error") %}| _error_ | _{{ r.error }}_ | — | — | — | — | `{{ r.path }}` |
+{% else %}| **{{ r.name }}** | {{ r.mission }} | {{ r.deliverables_done }}/{{ r.deliverables_total }} ({{ r.progress_pct }}%) | {{ r.wps_active }} | {{ r.wps_blocked }}{% if r.wps_blocked %} ⚠️{% endif %} | {{ r.last_activity or "—" }} | `{{ r.path }}` |
+{% endif %}{% endfor %}{% else %}_None registered. Run `build-platform.cli.portfolio register <path>` to add a project._
+{% endif %}

@@ -265,6 +265,76 @@ python -m build_platform.cli.decision --root . `
 
 ---
 
+## `python -m build_platform.cli.portfolio`
+
+Cross-project portfolio. Click group with subcommands `register`, `unregister`, `list`, `view`. Registry lives at `~/.brains-build-portfolio.yml`.
+
+### `portfolio register <path>`
+
+Add a project to the registry. Validates that the path contains `.brains-build/project.yml`. Idempotent.
+
+```powershell
+python -m build_platform.cli.portfolio register c:\path\to\project --json
+```
+
+**Exit codes:** `0` success · `2` not a build project.
+
+### `portfolio unregister <path>`
+
+Remove a path from the registry. Does not delete the project itself.
+
+**Exit codes:** `0` success · `1` not registered.
+
+### `portfolio list`
+
+```powershell
+python -m build_platform.cli.portfolio list --json
+```
+
+Returns `{ok, count, projects, registry}`. No project state is loaded.
+
+### `portfolio view`
+
+```powershell
+python -m build_platform.cli.portfolio view --format both --json
+```
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `--format` | `md` | One of `md`, `html`, `both` |
+| `--out` | — | Write rendered view to this path (overrides default location) |
+
+**Default destinations:**
+- `md` → stdout
+- `html` → `~/brains-build-portfolio.html`
+- `both` → `~/brains-build-portfolio.{md,html}`
+
+**Output (--json):**
+```json
+{
+  "ok": true,
+  "count": 3,
+  "written": {"md": "~/brains-build-portfolio.md", "html": "~/brains-build-portfolio.html"},
+  "rows": [
+    {
+      "path": "c:/path/to/alpha",
+      "name": "Alpha",
+      "mission": "Build alpha",
+      "deliverables_done": 1, "deliverables_total": 3, "progress_pct": 33,
+      "wps_active": 4, "wps_blocked": 0, "wps_done": 7,
+      "last_activity": "2026-05-26T08:42:11+00:00",
+      "dashboard": "c:/path/to/alpha/.brains-build/dashboards/current.md"
+    }
+  ]
+}
+```
+
+Projects whose `.brains-build/` is missing render as `{"path": "...", "error": "not a build project"}` — view never crashes on stale registry entries.
+
+---
+
 ## `python -m build_platform.cli.persona`
 
 Click group with three subcommands: `register`, `list`, `install`. Manages custom personas beyond the default 8.
