@@ -265,6 +265,91 @@ python -m build_platform.cli.decision --root . `
 
 ---
 
+## `python -m build_platform.cli.persona`
+
+Click group with three subcommands: `register`, `list`, `install`. Manages custom personas beyond the default 8.
+
+### `persona register`
+
+```powershell
+python -m build_platform.cli.persona register `
+  --root . `
+  --id build-data-sme `
+  --tier executor `
+  --description "Data engineering SME for pipelines and warehousing" `
+  --mission "Execute tier-2 data work packages per the WP brief." `
+  --json
+```
+
+**Options:**
+
+| Option | Required | Default | Description |
+|---|---|---|---|
+| `--id` | yes | — | Must match `^build-[a-z][a-z0-9-]+[a-z0-9]$` |
+| `--tier` | no | `executor` | One of `leadership`, `executor`, `read-only` |
+| `--description` | yes | — | One-line description (for Claude skill matching) |
+| `--mission` | yes | — | One-paragraph mission |
+| `--when-invoked` | no | sensible default | Free-form "when invoked" prose |
+| `--model` | no | tier default | Override model id |
+| `--tools` | no | tier default | Comma-separated tool list |
+| `--step` | no | — | Repeatable; append to "What to do" |
+| `--rule` | no | — | Repeatable; append to "Rules of engagement" |
+| `--force` | no | — | Overwrite if persona already exists |
+
+**Tier defaults:**
+
+| Tier | Model | Tools |
+|---|---|---|
+| `leadership` | `claude-opus-4-7` | Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent |
+| `executor` | `claude-sonnet-4-6` | Read, Write, Edit, Grep, Glob, Bash |
+| `read-only` | `claude-sonnet-4-6` | Read, Grep, Glob, Bash |
+
+**Output:**
+```json
+{
+  "ok": true,
+  "id": "build-data-sme",
+  "tier": "executor",
+  "path": ".brains-build/personas/build-data-sme.md",
+  "installed_globally": false,
+  "next": "Run `python -m build_platform.cli.persona install build-data-sme` to make it available across projects."
+}
+```
+
+**Exit codes:** `0` success · `2` invalid id · `3` already exists (use `--force`).
+
+### `persona list`
+
+```powershell
+python -m build_platform.cli.persona list --root . --json
+```
+
+Lists project-local + globally-installed personas. Local overrides global on id collision.
+
+**Output:**
+```json
+{
+  "ok": true,
+  "count": 9,
+  "personas": [
+    {"id": "build-data-sme", "scope": "local", "path": ".brains-build/personas/build-data-sme.md"},
+    {"id": "build-backend-sme", "scope": "global", "path": "~/.claude/agents/build/build-backend-sme.md"}
+  ]
+}
+```
+
+### `persona install`
+
+```powershell
+python -m build_platform.cli.persona install build-data-sme --root . --json
+```
+
+Copies `.brains-build/personas/<id>.md` to `~/.claude/agents/build/<id>.md`. Re-run with `--force` to overwrite global.
+
+**Exit codes:** `0` success · `1` no local persona with that id · `3` global already exists (use `--force`).
+
+---
+
 ## `python -m build_platform.cli.dashboard`
 
 Render the markdown PMO dashboard. Pure derivation from state files — no LLM call.

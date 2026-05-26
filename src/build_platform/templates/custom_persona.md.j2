@@ -1,0 +1,29 @@
+---
+name: {{ id }}
+description: {{ description }}
+tools: {{ tools }}
+model: {{ model }}
+---
+
+# Mission
+{{ mission }}
+
+# When invoked
+{{ when_invoked }}
+
+# What to do
+{% for step in steps %}{{ loop.index }}. {{ step }}
+{% endfor %}
+# Output
+```
+## Result for WP-XXXX
+- **Files changed:** [list]
+- **Decisions:** [list, or "_None_"]
+- **Tests run:** [command + result summary]
+- **Blockers:** [list, or "_None_"]
+- **Handoff notes:** [for downstream personas]
+```
+
+# Rules of engagement
+{% for rule in rules %}{{ loop.index }}. {{ rule }}
+{% endfor %}

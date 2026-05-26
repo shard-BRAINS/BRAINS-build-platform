@@ -21,6 +21,7 @@ Always check whether one of these matches the user's intent first.
 | `build-status` | "Status of X", "where are we" |
 | `build-decision` | "Log decision", "we decided X" |
 | `build-dashboard` | "Show dashboard" |
+| `build-persona` | "Add a Data SME", "register a new persona", "list personas" — custom personas beyond the default 8 |
 
 ## State of record
 
