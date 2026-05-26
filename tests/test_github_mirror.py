@@ -296,3 +296,83 @@ def test_mirror_status_when_disabled(tmp_path: Path):
     payload = json.loads(r.output)
     assert payload["enabled"] is False
     assert payload["wps_mirrored"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Finding #5 — dry-run preview
+# ---------------------------------------------------------------------------
+
+def test_mirror_dry_run_does_not_create_issues(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    _add_wp(tmp_path, "Task two")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    r = runner.invoke(mirror_group, [
+        "push", "--dry-run", "--root", str(tmp_path), "--json",
+    ])
+    assert r.exit_code == 0, r.output
+    payload = json.loads(r.output)
+    assert payload["dry_run"] is True
+    # No issue create/edit/close calls in dry-run mode
+    state_changing = [c for c in mock_gh.calls
+                      if c[:2] in (["issue", "create"], ["issue", "edit"],
+                                   ["issue", "close"], ["issue", "reopen"],
+                                   ["label", "create"])]
+    assert state_changing == []
+
+
+def test_mirror_dry_run_reports_planned_actions(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    _add_wp(tmp_path, "Task two")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    r = runner.invoke(mirror_group, [
+        "push", "--dry-run", "--root", str(tmp_path), "--json",
+    ])
+    payload = json.loads(r.output)
+    assert payload["counts"]["wps_to_create"] == 2
+    assert payload["counts"]["wps_to_edit"] == 0
+    assert payload["counts"]["labels_to_create"] > 0
+    # WP plan entries name each WP with action=create
+    wp_ids = {w["wp_id"] for w in payload["wps"]}
+    assert wp_ids == {"WP-0001", "WP-0002"}
+    assert all(w["action"] == "create" for w in payload["wps"])
+
+
+def test_mirror_dry_run_after_real_push_shows_edit_actions(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    # Add a 2nd WP after the first push — dry-run should show 1 create + 1 edit.
+    _add_wp(tmp_path, "Task two")
+    r = runner.invoke(mirror_group, [
+        "push", "--dry-run", "--root", str(tmp_path), "--json",
+    ])
+    payload = json.loads(r.output)
+    assert payload["counts"]["wps_to_create"] == 1
+    assert payload["counts"]["wps_to_edit"] == 1
+
+
+def test_mirror_dry_run_refuses_when_disabled(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    # No init — mirror disabled
+    runner = CliRunner()
+    r = runner.invoke(mirror_group, [
+        "push", "--dry-run", "--root", str(tmp_path), "--json",
+    ])
+    assert r.exit_code == 2
+    assert "disabled" in r.output.lower()

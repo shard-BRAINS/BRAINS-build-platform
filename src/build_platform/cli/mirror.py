@@ -60,12 +60,19 @@ def init_cmd(root, owner, repo, label_prefix, disable, as_json):
 
 @mirror_group.command("push")
 @click.option("--root", type=click.Path(file_okay=False), default=None)
+@click.option("--dry-run", "dry_run", is_flag=True,
+              help="Preview what would be pushed without making any state-changing "
+                   "gh calls. Read-only label/milestone probes still run.")
 @click.option("--json", "as_json", is_flag=True)
-def push_cmd(root, as_json):
-    """Reconcile every local WP + sprint to GitHub. Idempotent."""
+def push_cmd(root, dry_run, as_json):
+    """Reconcile every local WP + sprint to GitHub. Idempotent.
+
+    Use --dry-run first if you're about to push to a public repo and want to
+    see exactly which labels/milestones/issues would be created or edited.
+    """
     root_path = Path(root).resolve() if root else find_brains_build_root()
     try:
-        summary = push_all(root_path)
+        summary = push_all(root_path, dry_run=dry_run)
     except MirrorError as e:
         _emit({"error": str(e)}, as_json=as_json, exit_code=2)
     _emit(summary, as_json=as_json)

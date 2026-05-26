@@ -177,6 +177,41 @@ python -m build_platform.cli.dispatch_apply --root . --wp WP-0001 --test-timeout
 
 ---
 
+## `python -m build_platform.cli.dispatch_reject`
+
+Dev Orchestrator rejects a dispatched WP. Atomically transitions state, writes an audit entry, refreshes the dashboard. Closes Finding #10 from the 2026-05-26 dogfood — state transitions outside `cli.dispatch` previously skipped audit-writing.
+
+```powershell
+python -m build_platform.cli.dispatch_reject `
+  --root . --wp WP-0001 `
+  --reason "out-of-scope changes; tier-1 prompt was too permissive" `
+  --json
+```
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `--wp` | required | WP id to reject |
+| `--reason` | required | One-line reason. Recorded in WP history + audit notes |
+| `--retier` | — | Transition to `defined` instead of `blocked`. Use when the WP needs re-packaging as tier-2 |
+
+**Preconditions:** WP must be in state `dispatched`.
+
+**Output:**
+```json
+{
+  "ok": true, "wp_id": "WP-0001",
+  "new_state": "blocked",
+  "reason": "out-of-scope changes ...",
+  "next": "WP is blocked. Resolve via /build-decision or new WP."
+}
+```
+
+**Exit codes:** `0` success · `1` WP not found / wrong state.
+
+---
+
 ## `python -m build_platform.cli.scrum`
 
 Assemble the weekly scrum brief and recap stub. The PMO Lead subagent fills in the qualitative sections.
@@ -324,9 +359,23 @@ Writes `github.{enabled, owner, repo, label_prefix}` to `.brains-build/config.ym
 
 ```powershell
 python -m build_platform.cli.mirror push --root . --json
+python -m build_platform.cli.mirror push --root . --dry-run --json
 ```
 
+**Options:** `--dry-run` (preview without making state-changing gh calls; read-only probes still run).
+
 Reconciles everything. On first run, seeds platform labels (state-*, tier-1/2, workstream-*, deliverable-*, persona-*) and creates a milestone per sprint file. For each WP, creates an issue or edits the mapped one. Closes on `state=done`, reopens on `state=blocked`. Persists wp_id → issue_number map at `.brains-build/github-mirror.json`. Idempotent.
+
+**Dry-run output** (--dry-run):
+```json
+{
+  "ok": true, "dry_run": true, "repo": "shard-BRAINS/demo",
+  "labels": {"to_create": ["bbp:state-defined", ...], "already_present": [], "total_target": 14},
+  "sprints": [],
+  "wps": [{"wp_id": "WP-0001", "issue": null, "action": "create", "state": "defined", "post_action": null}],
+  "counts": {"wps_to_create": 1, "wps_to_edit": 0, "wps_to_close": 0, "wps_to_reopen": 0, "labels_to_create": 14, "sprints_to_create": 0}
+}
+```
 
 **Output:**
 ```json

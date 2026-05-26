@@ -43,7 +43,10 @@ Writes `github.{enabled, owner, repo, label_prefix}` to `.brains-build/config.ym
 
 ```powershell
 python -m build_platform.cli.mirror push --root . --json
+python -m build_platform.cli.mirror push --root . --dry-run --json   # preview only
 ```
+
+`--dry-run` makes NO state-changing gh calls (no label create, no issue create/edit/close/reopen, no milestone create). Read-only probes still run so the plan can show which labels/milestones already exist vs. need creating. Use this before any first push to a public repo — the output enumerates exactly what would land.
 
 Idempotent. On first run:
 1. Ensures all platform labels exist on the remote (one-time seed).

@@ -270,8 +270,110 @@ def push_workpackage(cfg: GitHubMirrorConfig, wp: WorkPackage,
     return number
 
 
-def push_all(project_root: Path) -> dict:
-    """Reconcile every local WP + sprint to GitHub. Returns a summary dict."""
+def plan_push(project_root: Path) -> dict:
+    """Compute what `push_all` would do, without calling gh write operations.
+
+    Returns a JSON-serializable plan: which labels would be ensured, which
+    milestones would be created vs reused, which WPs would be created vs
+    edited, and end-state transitions (close/reopen) per WP.
+
+    Read-only gh calls (label list, milestone list) are still made — they're
+    safe and let the plan distinguish "create" from "reuse".
+    """
+    config = load_config(project_root)
+    cfg = config.github
+    if not cfg.enabled:
+        raise MirrorError(
+            "GitHub mirror is disabled. Run `/build-mirror init --owner X --repo Y` first."
+        )
+    repo = _repo_arg(cfg)
+
+    deliverables = load_deliverables(project_root)
+    workstreams = load_workstreams(project_root)
+    wps = load_work_packages(project_root)
+    mirror_map = load_mirror_map(project_root)
+
+    # Labels — compute the full target set from current state.
+    target_labels = set()
+    for base in _ALL_PLATFORM_LABELS:
+        target_labels.add(_prefixed(cfg.label_prefix, base))
+    for ws in workstreams:
+        target_labels.add(_prefixed(cfg.label_prefix, f"workstream-{ws.id}"))
+    for d in deliverables:
+        target_labels.add(_prefixed(cfg.label_prefix, f"deliverable-{d.id}"))
+    for p in {wp.executor_persona for wp in wps}:
+        target_labels.add(_prefixed(cfg.label_prefix, f"persona-{p}"))
+
+    # Read-only gh probe to find existing labels.
+    try:
+        existing = _gh_json(["label", "list", "--repo", repo, "--json", "name", "--limit", "200"])
+        existing_label_names = {item["name"] for item in existing}  # type: ignore[union-attr]
+    except MirrorError:
+        existing_label_names = set()  # treat as 'all missing' if probe fails
+
+    labels_to_create = sorted(target_labels - existing_label_names)
+    labels_already_present = sorted(target_labels & existing_label_names)
+
+    # Sprints / milestones.
+    sprints_dir = state_dir(project_root) / "sprints"
+    sprint_plan = []
+    if sprints_dir.exists():
+        for sprint_file in sorted(sprints_dir.glob("sprint-*.md")):
+            sprint_id = sprint_file.stem
+            sprint_plan.append({
+                "sprint_id": sprint_id,
+                "action": "reuse" if sprint_id in mirror_map.sprints else "create",
+                "milestone_number": mirror_map.sprints.get(sprint_id),
+            })
+
+    # WPs — create vs edit + state transition.
+    wp_plan = []
+    for wp in wps:
+        action = "edit" if wp.id in mirror_map.wps else "create"
+        post_state = None
+        if wp.state == WPState.DONE:
+            post_state = "close"
+        elif wp.state == WPState.BLOCKED:
+            post_state = "reopen"
+        wp_plan.append({
+            "wp_id": wp.id,
+            "issue": mirror_map.wps.get(wp.id),
+            "action": action,
+            "state": wp.state.value,
+            "post_action": post_state,
+        })
+
+    return {
+        "ok": True,
+        "dry_run": True,
+        "repo": repo,
+        "labels": {
+            "to_create": labels_to_create,
+            "already_present": labels_already_present,
+            "total_target": len(target_labels),
+        },
+        "sprints": sprint_plan,
+        "wps": wp_plan,
+        "counts": {
+            "wps_to_create": sum(1 for w in wp_plan if w["action"] == "create"),
+            "wps_to_edit": sum(1 for w in wp_plan if w["action"] == "edit"),
+            "wps_to_close": sum(1 for w in wp_plan if w["post_action"] == "close"),
+            "wps_to_reopen": sum(1 for w in wp_plan if w["post_action"] == "reopen"),
+            "labels_to_create": len(labels_to_create),
+            "sprints_to_create": sum(1 for s in sprint_plan if s["action"] == "create"),
+        },
+    }
+
+
+def push_all(project_root: Path, *, dry_run: bool = False) -> dict:
+    """Reconcile every local WP + sprint to GitHub. Returns a summary dict.
+
+    When dry_run=True, no state-changing gh calls are made. The function
+    returns the same shape as plan_push().
+    """
+    if dry_run:
+        return plan_push(project_root)
+
     config = load_config(project_root)
     cfg = config.github
     if not cfg.enabled:
