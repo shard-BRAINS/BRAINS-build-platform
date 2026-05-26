@@ -25,7 +25,13 @@ What you do:
 - Read the diff at the returned path.
 - Spawn `build-dev-orchestrator` to review the diff against the WP spec.
 - Verdict cases:
-  - **approve** → apply the diff with `git apply <path>` (or manual Edit/Write equivalent), run tests, spawn `build-qa-sme` to verify acceptance, then update state.
+  - **approve** → run the apply CLI to atomically `git apply --check`, apply, run the project's test command, transition the WP to `in_review`, write the audit entry, and refresh the dashboard:
+
+    ```powershell
+    python -m build_platform.cli.dispatch_apply --root . --wp WP-XXXX --json
+    ```
+
+    Then spawn `build-qa-sme` to verify acceptance criteria.
   - **request changes** → write feedback to `.brains-build/runs/<wp-id>/review.md` and re-run the dispatch CLI (it picks up the feedback on next attempt).
   - **reject** → re-tag the WP as tier-2 via a new `/build-package` invocation; mark the current WP as blocked.
 

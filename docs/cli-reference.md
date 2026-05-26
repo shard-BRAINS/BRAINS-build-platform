@@ -137,6 +137,46 @@ python -m build_platform.cli.dispatch --root . --wp WP-0042 --json
 
 ---
 
+## `python -m build_platform.cli.dispatch_apply`
+
+Apply an approved tier-1 diff atomically: `git apply --check`, apply, optionally run the project's test command, transition the WP to `in_review`, write an audit entry, refresh the dashboard. Closes the tier-1 review loop without manual `git apply` invocations.
+
+```powershell
+python -m build_platform.cli.dispatch_apply --root . --wp WP-0001 --json
+python -m build_platform.cli.dispatch_apply --root . --wp WP-0001 --no-test --json
+python -m build_platform.cli.dispatch_apply --root . --wp WP-0001 --test-timeout 600 --json
+```
+
+**Preconditions:** WP must be in state `dispatched`. `runs/<wp-id>/proposed.diff` must exist (created by `cli.dispatch`).
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `--wp` | required | WP id whose diff to apply |
+| `--no-test` | — | Skip running the project's test command after apply |
+| `--test-timeout` | 300 | Seconds before test command is killed |
+
+**Exit codes:** `0` apply + tests succeeded (or tests skipped); WP → `in_review` · `1` WP not found / wrong state / no diff · `3` `git apply --check` failed (WP → `blocked`) · `4` tests failed after apply (WP → `blocked`).
+
+**Output (success):**
+```json
+{
+  "ok": true,
+  "wp_id": "WP-0001",
+  "tests": "passed",
+  "applied_from": ".brains-build/runs/WP-0001/proposed.diff",
+  "next": "QA SME verifies acceptance criteria."
+}
+```
+
+**Behavior on failure:**
+- `git apply --check` fails → WP transitioned to `blocked` with the check stderr in the history event. Audit entry result=`check_failed`. Source tree untouched.
+- `git apply` itself fails (rare after a passing --check) → WP transitioned to `blocked`. Audit result=`apply_failed`.
+- Test command fails or times out → WP transitioned to `blocked` (diff stays applied). Audit result=`tests_failed` / `tests_timeout`.
+
+---
+
 ## `python -m build_platform.cli.scrum`
 
 Assemble the weekly scrum brief and recap stub. The PMO Lead subagent fills in the qualitative sections.
