@@ -14,6 +14,7 @@
 [![Status](https://img.shields.io/badge/status-v0.1.0%20MVP-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/brains-build-platform/releases/tag/v0.1.0)
 [![Tests](https://img.shields.io/badge/tests-49%2F49%20passing-2A8B91?style=for-the-badge&labelColor=0A0A0A)](#run-the-tests)
 [![Python](https://img.shields.io/badge/python-3.11%2B-D99518?style=for-the-badge&logo=python&logoColor=FFFFFF&labelColor=0A0A0A)](#install)
+[![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=FFFFFF&labelColor=0A0A0A)](https://discord.gg/BEmTXXscBr)
 [![Incubator](https://img.shields.io/badge/BRAINS-Incubator-4DA8FF?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS)
 
 <br />
@@ -211,9 +212,10 @@ This is a **BRAINS Incubator** project — internal tooling that's reusable acro
 | | |
 |---|---|
 | ![Incubator](https://img.shields.io/badge/BRAINS-Incubator-4DA8FF?style=flat-square&labelColor=0A0A0A) | New projects, partnerships, prototypes — see the [BRAINS org page](https://github.com/shard-BRAINS) |
-| ![Resume](https://img.shields.io/badge/-brains--resume-D99518?style=flat-square&labelColor=0A0A0A) | The first live Incubator project: ND-aware résumé toolkit |
+| ![Resume](https://img.shields.io/badge/-brains--resume-D99518?style=flat-square&labelColor=0A0A0A) | The first live Incubator project — [ND-aware résumé toolkit](https://github.com/shard-BRAINS/BRAINS-resume-skill) |
+| ![Discord](https://img.shields.io/badge/-Discord-5865F2?style=flat-square&logo=discord&logoColor=FFFFFF&labelColor=0A0A0A) | Join the BRAINS Community — [discord.gg/BEmTXXscBr](https://discord.gg/BEmTXXscBr) |
 
-If you'd like to use the platform on your own project, or contribute, see the Incubator application process at the [org page](https://github.com/shard-BRAINS#apply-to-join-the-incubator).
+If you'd like to use the platform on your own project, or contribute, see the Incubator application process at the [org page](https://github.com/shard-BRAINS#apply-to-join-the-incubator), or jump straight into [the Discord](https://discord.gg/BEmTXXscBr) to talk first.
 
 ---
 
