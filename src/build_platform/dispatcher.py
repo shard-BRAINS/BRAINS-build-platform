@@ -24,13 +24,42 @@ class DiffValidationError(DispatchError):
 _DIFF_HEADER = re.compile(r"^---\s+a/(?P<path>.+)$", re.MULTILINE)
 _DIFF_HEADER_PLUS = re.compile(r"^\+\+\+\s+b/(?P<path>.+)$", re.MULTILINE)
 _DIFF_HUNK = re.compile(r"^@@\s+-\d+", re.MULTILINE)
+_FENCE_OPEN = re.compile(r"^```[\w-]*\s*\n", re.MULTILINE)
+_FENCE_CLOSE = re.compile(r"\n```\s*$")
+
+
+def strip_markdown_fences(text: str) -> str:
+    """Strip surrounding ```diff ... ``` / ``` ... ``` fences from LLM output.
+
+    Ollama and other small models often wrap diffs in code fences even when
+    told not to. We canonicalize before validation so the same WP doesn't
+    fail twice for a purely cosmetic reason.
+    """
+    cleaned = text.strip()
+    cleaned = _FENCE_OPEN.sub("", cleaned, count=1)
+    cleaned = _FENCE_CLOSE.sub("", cleaned)
+    if not cleaned.endswith("\n"):
+        cleaned += "\n"
+    return cleaned
 
 
 def validate_diff(diff_text: str, *, allowed_files: list[str]) -> None:
-    """Raise DiffValidationError if diff is malformed or touches files outside scope."""
-    minus = _DIFF_HEADER.findall(diff_text)
-    plus = _DIFF_HEADER_PLUS.findall(diff_text)
-    hunks = _DIFF_HUNK.findall(diff_text)
+    """Raise DiffValidationError if diff is malformed or touches files outside scope.
+
+    Surrounding markdown code fences (```diff ... ```) are stripped before
+    structural checks — Ollama frequently adds them despite prompt constraints.
+    The first non-whitespace line after stripping must be a `--- a/<path>`
+    header, otherwise prose / explanatory text snuck through.
+    """
+    cleaned = strip_markdown_fences(diff_text)
+    first_line = cleaned.lstrip().split("\n", 1)[0] if cleaned.strip() else ""
+    if not first_line.startswith("--- a/"):
+        raise DiffValidationError(
+            f"Diff must start with '--- a/<path>', got: {first_line!r}"
+        )
+    minus = _DIFF_HEADER.findall(cleaned)
+    plus = _DIFF_HEADER_PLUS.findall(cleaned)
+    hunks = _DIFF_HUNK.findall(cleaned)
     if not minus or not plus or not hunks:
         raise DiffValidationError("Diff lacks valid headers or hunks.")
     if minus != plus:
@@ -108,7 +137,8 @@ def dispatch_tier1(project_root: Path, wp: WorkPackage, client: OllamaClient) ->
             )
             continue
         diff_path = runs / "proposed.diff"
-        diff_path.write_text(raw, encoding="utf-8")
+        # Persist the canonicalized form (fences stripped) so `git apply` works directly.
+        diff_path.write_text(strip_markdown_fences(raw), encoding="utf-8")
         return diff_path
     raise DispatchError(
         f"Tier-1 dispatch for {wp.id} failed validation twice. "

@@ -9,6 +9,7 @@ from build_platform.dispatcher import (
     DispatchError,
     dispatch_tier1,
     prepare_tier2_brief,
+    strip_markdown_fences,
     validate_diff,
 )
 from build_platform.ollama_client import OllamaClient
@@ -108,6 +109,49 @@ def test_prepare_tier2_brief_emits_instruction_file(tmp_path: Path):
     assert "build-backend-sme" in content
     assert "WP-0001" in content
     assert "src/foo.py" in content
+
+
+def test_strip_markdown_fences_removes_diff_block():
+    """Ollama sometimes wraps output in ```diff ... ``` fences. Strip them."""
+    wrapped = "```diff\n" + DIFF_SAMPLE.strip() + "\n```\n"
+    cleaned = strip_markdown_fences(wrapped)
+    assert cleaned.lstrip().startswith("--- a/src/foo.py")
+    assert not cleaned.startswith("```")
+    assert "```" not in cleaned.rstrip().split("\n")[-1]
+
+
+def test_strip_markdown_fences_handles_plain_diff():
+    """Plain diff (no fences) passes through unchanged (modulo trailing newline)."""
+    cleaned = strip_markdown_fences(DIFF_SAMPLE)
+    assert cleaned.lstrip().startswith("--- a/src/foo.py")
+
+
+def test_validate_diff_accepts_fenced_input():
+    """Finding #2: a valid diff wrapped in markdown fences must validate."""
+    wrapped = "```diff\n" + DIFF_SAMPLE.strip() + "\n```\n"
+    validate_diff(wrapped, allowed_files=["src/foo.py"])  # must not raise
+
+
+def test_validate_diff_rejects_prose_before_diff():
+    """Diff with explanatory text before the headers must be rejected."""
+    polluted = "Sure! Here's the diff:\n\n" + DIFF_SAMPLE
+    with pytest.raises(DiffValidationError) as ei:
+        validate_diff(polluted, allowed_files=["src/foo.py"])
+    assert "must start with" in str(ei.value)
+
+
+def test_dispatch_tier1_persists_clean_diff_when_input_is_fenced(tmp_path: Path):
+    """Finding #2: proposed.diff on disk must be clean (no fences), so git apply works."""
+    project_root, wp = _seed(tmp_path)
+    config = OllamaConfig(models=OllamaModels())
+    client = OllamaClient(config)
+    fenced = "```diff\n" + DIFF_SAMPLE.strip() + "\n```\n"
+    client.chat = MagicMock(return_value=fenced)  # type: ignore
+
+    proposed = dispatch_tier1(project_root, wp, client)
+    content = proposed.read_text(encoding="utf-8")
+    assert not content.lstrip().startswith("```")
+    assert content.lstrip().startswith("--- a/src/foo.py")
 
 
 def test_dispatch_tier1_refuses_oversized_scope(tmp_path: Path):
