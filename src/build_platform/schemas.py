@@ -12,6 +12,14 @@ class WPState(str, Enum):
     DONE = "done"
     BLOCKED = "blocked"
 
+    def is_terminal_state(self) -> bool:
+        """True if no further dispatch flow applies (DONE or BLOCKED).
+
+        DONE = success terminal. BLOCKED = requires human intervention to
+        re-enter the dispatch flow. Other states are mid-flow.
+        """
+        return self in (WPState.DONE, WPState.BLOCKED)
+
 
 class WPTier(int, Enum):
     ONE = 1

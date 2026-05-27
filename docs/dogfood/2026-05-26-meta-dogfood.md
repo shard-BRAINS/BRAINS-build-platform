@@ -12,13 +12,50 @@
 | 3 | important | ✅ closed | `84786cf` (tier-1 prompt scope discipline) |
 | 4 | important | ✅ addressed | partly downstream of #3; remaining risk is inherent to small models — Dev Orch review remains the mitigation |
 | 5 | minor | ✅ closed | `4b44c69` (mirror push `--dry-run`) |
-| 6 | minor | ✅ closed | (this session) `[BLOCKED]` title prefix + body banner on GitHub |
-| 7 | important | ✅ closed | (this session) `package_edit` CLI verb |
+| 6 | minor | ✅ closed | (round 3) `[BLOCKED]` title prefix + body banner on GitHub |
+| 7 | important | ✅ closed | (round 3) `package_edit` CLI verb |
 | 8 | important | ✅ closed | `460a5c5` (`dispatch_apply` verb) |
-| 9 | minor | ✅ closed | (this session) persona-install preflight warning in tier-2 dispatch |
+| 9 | minor | ✅ closed | (round 3) persona-install preflight warning in tier-2 dispatch |
 | 10 | important | ✅ closed | `13b48b7` (`dispatch_reject` verb + audit on transition) |
+| 11 | **important** | ✅ closed | (re-dogfood) `check_diff_applies_cleanly` integrated into dispatch_tier1 |
 
-**Test count delta:** 49 (v0.1.0) → 113 (after 3 quick wins) → 123 (after round 2) → **138 after this session** (+89 across all dogfood-driven fixes).
+**Test count delta:** 49 (v0.1.0) → 138 (post-round-3) → 177 (post-v2.7) → **181 after re-dogfood** (+132 across all dogfood-driven fixes).
+
+---
+
+## Finding #11 — diff passes `validate_diff` but fails `git apply --check`
+
+**Date surfaced:** 2026-05-27, re-dogfood on `WP-0006` (Add WPState.is_terminal_state).
+**Severity:** important.
+**Where:** `src/build_platform/dispatcher.py::validate_diff` (structural check too loose).
+
+**Reproduction:** Triage + package + dispatch a clean tier-1 WP. `qwen2.5-coder:7b` produced this diff:
+```
+--- a/src/build_platform/schemas.py
++++ b/src/build_platform/schemas.py
+@@ -21,6 +21,7 @@ class WPState(str, Enum):
+     IN_REVIEW = "in_review"
+     DONE = "done"
+     BLOCKED = "blocked"
++    def is_terminal_state(self) -> bool:
++        return self in {WPState.DONE, WPState.BLOCKED}
+```
+
+Structurally valid: has `--- a/`, `+++ b/`, `@@ ... @@`, hunk content. `validate_diff` accepts. But the `@@ -21,6 +21,7 @@` header is wrong: actual content is 3 context lines + 0 removed + 2 added, so the header should be `@@ -21,3 +21,5 @@`. `git apply --check` rejects with "corrupt patch at line 9".
+
+**Why round-1/2 fixes didn't catch this:** the prior fence-strip + scope-discipline + first-line-is-`--- a/` checks all look at *shape*, not at the *math* inside the hunk header. The math is exactly what `git apply` enforces.
+
+**Fix:** New `check_diff_applies_cleanly(project_root, diff_text)` helper runs `git apply --check` against a tmp file. Integrated into `dispatch_tier1`'s retry loop AFTER `validate_diff` passes — if `git apply --check` fails, treat as a recoverable validation failure with concrete feedback (the format of `@@ -A,B +C,D @@` and what B/D should equal). The existing 2-attempt retry mechanism handles the rest. Non-git project roots skip the check (return `(True, "")`).
+
+**Commit:** (this session, with the round-4 hygiene + re-dogfood batch).
+
+**Tests:** 4 new — apply-check returns True for non-git dir, detects bad hunk header in real git repo, accepts well-formed diff, end-to-end retry-on-bad-then-good behavior.
+
+**Demo trace** of the actual re-dogfood loop after the fix:
+1. `triage --spec "Add ..." --file schemas.py --accept "..."` → suggested tier-1, all four criteria pass.
+2. `package --tier 1 --file schemas.py ...` → WP-0006 created cleanly.
+3. `dispatch --wp WP-0006` → Ollama produced the bad-hunk-counts diff; with the new check, the dispatcher would now reject + retry with concrete feedback (instead of writing it to disk).
+4. After Finding #11's fix, the dispatch loop is self-correcting.
 
 ## Original findings (preserved for record)
 

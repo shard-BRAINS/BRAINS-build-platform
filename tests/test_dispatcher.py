@@ -7,6 +7,7 @@ import pytest
 from build_platform.dispatcher import (
     DiffValidationError,
     DispatchError,
+    check_diff_applies_cleanly,
     dispatch_tier1,
     prepare_tier2_brief,
     strip_markdown_fences,
@@ -175,6 +176,101 @@ def test_dispatch_tier1_persists_clean_diff_when_input_is_fenced(tmp_path: Path)
     content = proposed.read_text(encoding="utf-8")
     assert not content.lstrip().startswith("```")
     assert content.lstrip().startswith("--- a/src/foo.py")
+
+
+def test_check_diff_applies_cleanly_returns_true_for_non_git_dir(tmp_path: Path):
+    """Finding #11: in a non-git directory, skip the apply-check (return True)."""
+    ok, err = check_diff_applies_cleanly(tmp_path, DIFF_SAMPLE)
+    assert ok is True
+    assert err == ""
+
+
+def test_check_diff_applies_cleanly_detects_bad_hunk_header(tmp_path: Path):
+    """Finding #11: a diff with wrong @@ line counts is rejected by git apply --check.
+
+    The real-world failure from re-dogfood: Ollama generated `@@ -21,6 +21,7 @@`
+    when the actual content was 3 context lines + 2 added (should be `-21,3 +21,5`).
+    """
+    import subprocess
+    # Set up a real tiny git repo
+    subprocess.run(["git", "init", "-b", "main"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@t.test"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "foo.py").write_text('def hello(): return "old"\n', encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "seed"], cwd=tmp_path, check=True, capture_output=True)
+
+    bad_hunk_counts = (
+        "--- a/src/foo.py\n"
+        "+++ b/src/foo.py\n"
+        "@@ -1,6 +1,7 @@\n"            # wrong: source has only 1 line, says 6
+        '-def hello(): return "old"\n'
+        '+def hello(): return "new"\n'
+    )
+    ok, err = check_diff_applies_cleanly(tmp_path, bad_hunk_counts)
+    assert ok is False
+    assert err  # non-empty error message
+
+
+def test_check_diff_applies_cleanly_accepts_well_formed(tmp_path: Path):
+    """A diff with correct hunk counts and matching source content applies cleanly."""
+    import subprocess
+    subprocess.run(["git", "init", "-b", "main"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@t.test"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "foo.py").write_text('def hello(): return "old"\n', encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "seed"], cwd=tmp_path, check=True, capture_output=True)
+
+    good = (
+        "--- a/src/foo.py\n"
+        "+++ b/src/foo.py\n"
+        "@@ -1 +1 @@\n"
+        '-def hello(): return "old"\n'
+        '+def hello(): return "new"\n'
+    )
+    ok, err = check_diff_applies_cleanly(tmp_path, good)
+    assert ok is True
+    assert err == ""
+
+
+def test_dispatch_tier1_retries_when_diff_passes_validation_but_fails_apply(tmp_path: Path):
+    """Finding #11 end-to-end: Ollama returns a structurally valid but un-appliable
+    diff on attempt 1, then a cleanly-appliable diff on attempt 2. Dispatch should
+    succeed with the second one."""
+    import subprocess
+    project_root, wp = _seed(tmp_path)
+    # Make the seeded project a real git repo so check_diff_applies_cleanly runs.
+    subprocess.run(["git", "init", "-b", "main"], cwd=project_root, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@t.test"], cwd=project_root, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=project_root, check=True, capture_output=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=project_root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "."], cwd=project_root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "seed"], cwd=project_root, check=True, capture_output=True)
+
+    config = OllamaConfig(models=OllamaModels())
+    client = OllamaClient(config)
+    bad = (
+        "--- a/src/foo.py\n+++ b/src/foo.py\n@@ -1,6 +1,7 @@\n"
+        '-def hello(): return "old"\n+def hello(): return "new"\n'
+    )
+    good = (
+        "--- a/src/foo.py\n+++ b/src/foo.py\n@@ -1 +1 @@\n"
+        '-def hello(): return "old"\n+def hello(): return "new"\n'
+    )
+    client.chat = MagicMock(side_effect=[bad, good])  # type: ignore
+
+    proposed = dispatch_tier1(project_root, wp, client)
+    assert proposed.exists()
+    assert client.chat.call_count == 2
+    # Second prompt should mention the hunk-counts hint
+    second_call_prompt = client.chat.call_args_list[1].kwargs["prompt"]
+    assert "@@" in second_call_prompt
+    assert "SOURCE_COUNT" in second_call_prompt
 
 
 def test_dispatch_tier1_refuses_oversized_scope(tmp_path: Path):

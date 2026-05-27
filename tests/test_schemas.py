@@ -82,6 +82,15 @@ def test_config_defaults_for_ollama_url():
     assert c.ollama.models.summarizer == "llama3.2:3b"
 
 
+def test_wp_state_is_terminal_state():
+    """WPState.is_terminal_state(): DONE and BLOCKED are terminal; others aren't."""
+    assert WPState.DONE.is_terminal_state() is True
+    assert WPState.BLOCKED.is_terminal_state() is True
+    assert WPState.DEFINED.is_terminal_state() is False
+    assert WPState.DISPATCHED.is_terminal_state() is False
+    assert WPState.IN_REVIEW.is_terminal_state() is False
+
+
 def test_workstream_minimal():
     ws = Workstream(
         id="backend",

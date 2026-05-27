@@ -1,5 +1,7 @@
 """Core dispatch: tier-1 (Ollama) and tier-2 (Claude subagent brief)."""
 import re
+import subprocess
+import tempfile
 from importlib.resources import files
 from pathlib import Path
 
@@ -41,6 +43,37 @@ def strip_markdown_fences(text: str) -> str:
     if not cleaned.endswith("\n"):
         cleaned += "\n"
     return cleaned
+
+
+class DiffAppliesError(DispatchError):
+    """Diff is structurally valid but `git apply --check` rejects it.
+
+    Most common cause: Ollama produced an @@ hunk header with the wrong
+    line counts (B != context+removed, or D != context+added). Surfaced
+    by dogfood Finding #11 (2026-05-27): the structural validator alone
+    isn't sufficient — git apply is the authoritative check.
+    """
+
+
+def check_diff_applies_cleanly(project_root: Path, diff_text: str) -> tuple[bool, str]:
+    """Run `git apply --check` against the diff in a tmp file.
+
+    Returns (True, "") if the diff would apply cleanly (or the project
+    isn't a git repo). Returns (False, stderr) if it would fail.
+    """
+    if not (project_root / ".git").exists():
+        return True, ""  # not a git repo; skip the check
+    fd, path = tempfile.mkstemp(suffix=".diff", text=True)
+    try:
+        with open(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(diff_text)
+        result = subprocess.run(
+            ["git", "apply", "--check", path],
+            cwd=project_root, capture_output=True, text=True,
+        )
+        return result.returncode == 0, result.stderr.strip()
+    finally:
+        Path(path).unlink(missing_ok=True)
 
 
 def validate_diff(diff_text: str, *, allowed_files: list[str]) -> None:
@@ -136,9 +169,27 @@ def dispatch_tier1(project_root: Path, wp: WorkPackage, client: OllamaClient) ->
                 f"Output a unified diff only. No prose. No backticks. Use exact paths."
             )
             continue
+
+        # Finding #11: structural validation passes != `git apply` accepts.
+        # Most common cause is wrong hunk @@ line counts. Run --check now so
+        # we retry with feedback instead of failing later at dispatch_apply.
+        cleaned = strip_markdown_fences(raw)
+        applies, apply_err = check_diff_applies_cleanly(project_root, cleaned)
+        if not applies:
+            review_feedback = (
+                f"Diff was structurally valid but `git apply --check` rejected it:\n"
+                f"{apply_err}\n\n"
+                f"Most common cause: the @@ hunk header line counts are wrong.\n"
+                f"Format is `@@ -SOURCE_START,SOURCE_COUNT +DEST_START,DEST_COUNT @@`\n"
+                f"  SOURCE_COUNT = (context lines) + (removed lines)\n"
+                f"  DEST_COUNT   = (context lines) + (added lines)\n"
+                f"Recompute and try again with correct counts."
+            )
+            continue
+
         diff_path = runs / "proposed.diff"
         # Persist the canonicalized form (fences stripped) so `git apply` works directly.
-        diff_path.write_text(strip_markdown_fences(raw), encoding="utf-8")
+        diff_path.write_text(cleaned, encoding="utf-8")
         return diff_path
     raise DispatchError(
         f"Tier-1 dispatch for {wp.id} failed validation twice. "
