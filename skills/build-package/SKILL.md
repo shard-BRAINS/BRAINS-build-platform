@@ -43,6 +43,19 @@ A WP is tier-1 ONLY if:
 
 Anything failing one criterion is tier-2.
 
+## Editing an existing WP
+
+If a user wants to change a WP that's already in the log (rename, re-tier, add deps, swap executor), use the `package_edit` CLI rather than re-creating:
+
+```powershell
+python -m build_platform.cli.package_edit --root . --wp WP-0001 --title "Renamed" --json
+python -m build_platform.cli.package_edit --root . --wp WP-0001 --tier 1 --add-file src/y.py --remove-file src/x.py --json
+python -m build_platform.cli.package_edit --root . --wp WP-0001 --add-dep WP-0002 --json
+```
+
+The edit verb refuses orphan deps, enforces the tier-1 ≤3-files cap, appends a history event, and writes an audit entry. State (`defined`, `dispatched`, etc.) cannot be edited here — use `dispatch`, `dispatch_apply`, or `dispatch_reject` for state transitions.
+
 ## Don't
 
 - Don't append to work-packages.jsonl directly. The CLI handles schema validation, id assignment, and tier-1 checks.
+- Don't try to edit `state` via `package_edit` — state has its own transition verbs.

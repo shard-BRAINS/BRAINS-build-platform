@@ -152,6 +152,58 @@ def load_wp_state(project_root: Path) -> dict[str, WorkPackage]:
     return {wp.id: wp for wp in load_work_packages(project_root)}
 
 
+# Fields safe to edit post-creation. Excludes id, created_by, created_at,
+# state, history — those have their own transition paths.
+_EDITABLE_FIELDS = {
+    "title", "workstream", "deliverable_id", "tier", "executor_persona",
+    "spec", "spec_files", "acceptance", "depends_on", "consult",
+}
+
+
+def update_work_package_fields(
+    project_root: Path,
+    wp_id: str,
+    updates: dict,
+    *,
+    by: str,
+    event: str,
+    at: str | None = None,
+) -> WorkPackage:
+    """Edit one or more editable fields of an existing WP.
+
+    Appends a single history event describing the edit. Returns the updated WP.
+    Raises ValueError for non-editable keys, KeyError if wp_id is not found.
+    """
+    from datetime import datetime, timezone
+
+    disallowed = set(updates) - _EDITABLE_FIELDS
+    if disallowed:
+        raise ValueError(
+            f"Cannot edit fields: {sorted(disallowed)}. "
+            f"Editable fields: {sorted(_EDITABLE_FIELDS)}."
+        )
+
+    at = at or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    path = state_dir(project_root) / "work-packages.jsonl"
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    out_lines: list[str] = []
+    updated: WorkPackage | None = None
+    for raw in lines:
+        if not raw.strip():
+            continue
+        wp = WorkPackage.model_validate_json(raw)
+        if wp.id == wp_id:
+            payload = dict(updates)
+            payload["history"] = [*wp.history, WPHistoryEvent(at=at, by=by, event=event)]
+            wp = wp.model_copy(update=payload)
+            updated = wp
+        out_lines.append(json.dumps(wp.model_dump(mode="json"), separators=(",", ":")))
+    if updated is None:
+        raise KeyError(f"WP {wp_id} not found")
+    path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    return updated
+
+
 def save_config(project_root: Path, config: Config) -> None:
     path = state_dir(project_root) / "config.yml"
     with path.open("w", encoding="utf-8") as f:
