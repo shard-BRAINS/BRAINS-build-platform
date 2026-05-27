@@ -11,7 +11,7 @@
 
 <br />
 
-[![Status](https://img.shields.io/badge/status-v0.1.0%20MVP-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/brains-build-platform/releases/tag/v0.1.0)
+[![Status](https://img.shields.io/badge/status-v0.1.0%20MVP-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/BRAINS-build-platform/releases/tag/v0.1.0)
 [![Tests](https://img.shields.io/badge/tests-49%2F49%20passing-2A8B91?style=for-the-badge&labelColor=0A0A0A)](#run-the-tests)
 [![Python](https://img.shields.io/badge/python-3.11%2B-D99518?style=for-the-badge&logo=python&logoColor=FFFFFF&labelColor=0A0A0A)](#install)
 [![Licence](https://img.shields.io/badge/licence-Apache%202.0-0A0A0A?style=for-the-badge&labelColor=D99518)](LICENSE)
@@ -131,7 +131,7 @@ Everything else. `/build-dispatch` writes a structured brief to `.brains-build/r
 ## Install
 
 ```powershell
-git clone https://github.com/shard-BRAINS/brains-build-platform.git c:\BRAINS_Build_Platform
+git clone https://github.com/shard-BRAINS/BRAINS-build-platform.git c:\BRAINS_Build_Platform
 cd c:\BRAINS_Build_Platform
 python -m venv .venv
 .venv\Scripts\Activate.ps1
@@ -170,7 +170,7 @@ Decisions are logged through `/build-decision`. Read-only queries through `/buil
 ## What's in the repo
 
 ```
-brains-build-platform/
+BRAINS-build-platform/
 ├── src/build_platform/          # Python package
 │   ├── schemas.py · state.py    # Pydantic models + read/write/validate
 │   ├── audit.py · git_utils.py  # Audit trail + read-only git helpers
