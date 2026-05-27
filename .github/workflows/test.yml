@@ -25,9 +25,8 @@ jobs:
       - name: Install package + dev deps
         run: pip install -e ".[dev]"
 
-      - name: Lint (non-blocking)
+      - name: Lint
         run: ruff check src tests
-        continue-on-error: true
 
       - name: Run pytest
         run: pytest -q

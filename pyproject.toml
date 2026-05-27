@@ -2,6 +2,10 @@
 name = "build-platform"
 version = "0.1.0"
 description = "BRAINS Build Platform — agentic end-to-end software delivery"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "BRAINS Incubator", email = "info@brainscertified.com"}]
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.6",
