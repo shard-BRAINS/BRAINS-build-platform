@@ -43,6 +43,24 @@ A WP is tier-1 ONLY if:
 
 Anything failing one criterion is tier-2.
 
+### Auto-triage (v2.7)
+
+Dev Orch can ask the platform to *suggest* a tier before committing the WP, without mutating state:
+
+```powershell
+# Ad-hoc (before /build-package):
+python -m build_platform.cli.triage --root . `
+  --spec "Rename get_cwd to get_current_working_directory across utils." `
+  --file src/utils.py `
+  --accept "tests pass" --accept "lint passes" `
+  --json
+
+# Against an existing WP (after /build-package, to check if the recorded tier was right):
+python -m build_platform.cli.triage --root . --wp WP-0001 --json
+```
+
+Output includes per-criterion verdicts (✓/✗) and a rationale. Heuristic is conservative — false negatives (suggesting tier-2 when tier-1 would work) are cheaper than false positives. **Explicit `--tier` on `/build-package` always wins** — triage is advisory, not enforcing.
+
 ## Editing an existing WP
 
 If a user wants to change a WP that's already in the log (rename, re-tier, add deps, swap executor), use the `package_edit` CLI rather than re-creating:

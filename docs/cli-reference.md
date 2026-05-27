@@ -83,6 +83,64 @@ python -m build_platform.cli.package `
 
 ---
 
+## `python -m build_platform.cli.triage` (v2.7)
+
+Suggest tier-1 vs tier-2 for a WP without committing or mutating anything. Pure heuristic. Read-only.
+
+```powershell
+# Against an existing WP
+python -m build_platform.cli.triage --root . --wp WP-0001 --json
+
+# Ad-hoc, before /build-package
+python -m build_platform.cli.triage --root . `
+  --spec "Rename foo to bar across utils." `
+  --file src/utils.py `
+  --accept "tests pass" --accept "lint passes" `
+  --json
+```
+
+**Options:**
+
+| Option | Description |
+|---|---|
+| `--wp` | Triage an existing WP (loads spec/files/acceptance from state) |
+| `--spec` | Ad-hoc: spec text |
+| `--file` | Ad-hoc: file in scope (repeatable) |
+| `--accept` | Ad-hoc: acceptance criterion (repeatable) |
+
+Either `--wp` OR (`--spec` + others) is required.
+
+**Heuristic** (all four must pass for tier-1):
+1. **Scope** — ≤ 3 files AND total file size < 50KB (existing files only; new-file scaffolds count as 0 bytes).
+2. **Mechanical verb** — spec starts with one of: `rename, format, bump, scaffold, refactor, replace, doc edit, add field, remove field, extract, inline, delete unused, add import, remove import`. Plus a softer match on leading `add/remove/delete`.
+3. **No design keywords** — spec contains none of: `design, architecture, decide, decision, approach, evaluate, research, investigate, explore, should we, what if, choose between, trade-off`.
+4. **Objective acceptance** — every criterion mentions: `test, lint, pass, fail, compile, match, return, exit, file exists, file contains, regex, diff, succeeds, output, 0 errors, no errors`.
+
+**Output (--wp mode):**
+```json
+{
+  "wp_id": "WP-0001",
+  "current_tier": 1,
+  "suggested_tier": 1,
+  "matches_current_tier": true,
+  "criteria": [
+    {"name": "scope", "pass": true, "detail": "1 file(s), 412B total"},
+    {"name": "mechanical_verb", "pass": true, "detail": "matched: 'rename'"},
+    {"name": "no_design_keywords", "pass": true, "detail": "no design keywords"},
+    {"name": "objective_acceptance", "pass": true, "detail": "all 2 criteria objectively checkable"}
+  ],
+  "rationale": "All four tier-1 criteria pass."
+}
+```
+
+**Output (ad-hoc):** same shape, `wp_id` = `null`, no `current_tier`/`matches_current_tier`.
+
+**Conservative by design:** false negatives (suggesting tier-2 when tier-1 would work) are preferable to false positives (suggesting tier-1 for judgment work, which would then get rejected by Dev Orch at review time anyway).
+
+**Triage is advisory.** Explicit `--tier` on `/build-package` always wins.
+
+---
+
 ## `python -m build_platform.cli.package_edit`
 
 Edit fields on an existing WP. Closes Finding #7 — pre-fix workaround was hand-editing `work-packages.jsonl`. Appends a history event and writes an audit entry.
