@@ -1,5 +1,4 @@
 """Tests for state.py."""
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
