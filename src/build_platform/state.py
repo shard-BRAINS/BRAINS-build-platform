@@ -5,7 +5,7 @@ from typing import Iterable
 
 from ruamel.yaml import YAML
 
-from build_platform.paths import STATE_DIR_NAME, state_dir
+from build_platform.paths import state_dir
 from build_platform.schemas import (
     Config,
     Deliverable,

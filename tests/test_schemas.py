@@ -11,7 +11,6 @@ from build_platform.schemas import (
     ProjectConfig,
     WorkPackage,
     Workstream,
-    WPHistoryEvent,
     WPState,
     WPTier,
 )

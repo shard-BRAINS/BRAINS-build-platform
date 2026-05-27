@@ -1,7 +1,6 @@
 """Tests for triage.py — pure heuristic."""
 from pathlib import Path
 
-import pytest
 
 from build_platform.triage import suggest_tier
 

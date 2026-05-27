@@ -48,13 +48,18 @@ class _GhMock:
         if args[:2] == ["label", "list"]:
             return json.dumps([{"name": n} for n in self.existing_labels])
         if args[:2] == ["label", "create"]:
-            self.existing_labels.append(args[2]); return ""
+            self.existing_labels.append(args[2])
+            return ""
         if args[:2] == ["issue", "create"]:
-            n = self.next_issue_number; self.next_issue_number += 1
+            n = self.next_issue_number
+            self.next_issue_number += 1
             return f"https://github.com/owner/repo/issues/{n}\n"
-        if args[:2] == ["issue", "edit"]: return ""
-        if args[:2] == ["issue", "close"]: return ""
-        if args[:2] == ["issue", "reopen"]: return ""
+        if args[:2] == ["issue", "edit"]:
+            return ""
+        if args[:2] == ["issue", "close"]:
+            return ""
+        if args[:2] == ["issue", "reopen"]:
+            return ""
         if args[:2] == ["issue", "view"]:
             n = int(args[2])
             return json.dumps(self.remote_issue_states.get(n, {
@@ -65,7 +70,8 @@ class _GhMock:
         if args[0] == "api" and args[1].endswith("/milestones") and "-f" not in args:
             return json.dumps(self.existing_milestones)
         if args[0] == "api" and args[1].endswith("/milestones"):
-            n = self.next_milestone_number; self.next_milestone_number += 1
+            n = self.next_milestone_number
+            self.next_milestone_number += 1
             return json.dumps({"number": n})
         raise AssertionError(f"Unexpected gh call in integration test: {args}")
 

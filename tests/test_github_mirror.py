@@ -13,7 +13,6 @@ from build_platform.cli.init import init_cmd
 from build_platform.cli.mirror import mirror_group
 from build_platform.cli.package import package_cmd
 from build_platform.github_mirror import (
-    MirrorError,
     MirrorMap,
     _blocker_banner,
     _issue_title,
@@ -23,7 +22,6 @@ from build_platform.github_mirror import (
     save_mirror_map,
 )
 from build_platform.schemas import (
-    GitHubMirrorConfig,
     WorkPackage,
     WPState,
     WPTier,

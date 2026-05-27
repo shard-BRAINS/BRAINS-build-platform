@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 
 from build_platform.cli.init import init_cmd
@@ -31,7 +30,8 @@ def _fake_home(tmp_path: Path, monkeypatch) -> Path:
 
 
 def test_register_adds_project(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     project = _init_project(tmp_path, "Alpha")
     runner = CliRunner()
     r = runner.invoke(portfolio_group, [
@@ -45,7 +45,8 @@ def test_register_adds_project(tmp_path: Path):
 
 
 def test_register_rejects_non_project(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     runner = CliRunner()
     r = runner.invoke(portfolio_group, [
         "register", str(tmp_path), "--home", str(home), "--json",
@@ -55,7 +56,8 @@ def test_register_rejects_non_project(tmp_path: Path):
 
 
 def test_register_idempotent(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     project = _init_project(tmp_path, "Alpha")
     runner = CliRunner()
     runner.invoke(portfolio_group, ["register", str(project), "--home", str(home), "--json"])
@@ -68,7 +70,8 @@ def test_register_idempotent(tmp_path: Path):
 
 
 def test_unregister_removes_project(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     project = _init_project(tmp_path, "Alpha")
     runner = CliRunner()
     runner.invoke(portfolio_group, ["register", str(project), "--home", str(home), "--json"])
@@ -81,7 +84,8 @@ def test_unregister_removes_project(tmp_path: Path):
 
 
 def test_unregister_unknown_path(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     runner = CliRunner()
     r = runner.invoke(portfolio_group, [
         "unregister", str(tmp_path / "nope"), "--home", str(home), "--json",
@@ -90,7 +94,8 @@ def test_unregister_unknown_path(tmp_path: Path):
 
 
 def test_list_shows_registered(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     p1 = _init_project(tmp_path, "Alpha")
     p2 = _init_project(tmp_path, "Beta")
     runner = CliRunner()
@@ -104,7 +109,8 @@ def test_list_shows_registered(tmp_path: Path):
 
 
 def test_view_markdown_aggregates_projects(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     p1 = _init_project(tmp_path, "Alpha")
     p2 = _init_project(tmp_path, "Beta")
     runner = CliRunner()
@@ -121,7 +127,8 @@ def test_view_markdown_aggregates_projects(tmp_path: Path):
 
 
 def test_view_html_writes_file(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     project = _init_project(tmp_path, "Alpha")
     runner = CliRunner()
     runner.invoke(portfolio_group, ["register", str(project), "--home", str(home), "--json"])
@@ -140,7 +147,8 @@ def test_view_html_writes_file(tmp_path: Path):
 
 def test_view_handles_missing_project(tmp_path: Path):
     """A registered path that no longer has .brains-build/ produces an error row, not a crash."""
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     project = _init_project(tmp_path, "Alpha")
     runner = CliRunner()
     runner.invoke(portfolio_group, ["register", str(project), "--home", str(home), "--json"])
@@ -156,7 +164,8 @@ def test_view_handles_missing_project(tmp_path: Path):
 
 
 def test_view_empty_portfolio(tmp_path: Path):
-    home = tmp_path / "home"; home.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
     runner = CliRunner()
     r = runner.invoke(portfolio_group, [
         "view", "--home", str(home), "--format", "md", "--json",

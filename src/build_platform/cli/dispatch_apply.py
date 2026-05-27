@@ -131,7 +131,7 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json):
     _write_audit(root_path, wp, time.monotonic() - start, "applied", diff_path,
                  tests_run=([(config.project.test_command, test_status)]
                             if test_status != "skipped" else []),
-                 notes=f"Tier-1 diff applied. Awaiting QA acceptance verification.")
+                 notes="Tier-1 diff applied. Awaiting QA acceptance verification.")
 
     render_dashboard(root_path)
 

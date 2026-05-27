@@ -14,7 +14,6 @@ from jinja2 import Template
 
 from build_platform.paths import STATE_DIR_NAME
 from build_platform.portfolio import (
-    Portfolio,
     is_brains_project,
     load_portfolio,
     registry_path,

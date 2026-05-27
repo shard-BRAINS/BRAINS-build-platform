@@ -1,5 +1,4 @@
 """Tests for render_dashboard.py."""
-from datetime import datetime, timezone
 from pathlib import Path
 
 from build_platform.render_dashboard import (

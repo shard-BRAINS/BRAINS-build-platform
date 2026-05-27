@@ -7,7 +7,6 @@ from pathlib import Path
 import click
 
 from build_platform.paths import find_brains_build_root
-from build_platform.schemas import WPState
 from build_platform.state import load_project, load_work_packages
 
 

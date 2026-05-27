@@ -7,7 +7,6 @@ import click
 from build_platform.paths import find_brains_build_root
 from build_platform.render_dashboard import (
     render_dashboard,
-    render_dashboard_all,
     render_dashboard_html,
 )
 

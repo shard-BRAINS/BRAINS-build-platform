@@ -7,7 +7,7 @@ from jinja2 import Template
 
 from build_platform.ollama_client import OllamaClient
 from build_platform.paths import state_dir
-from build_platform.schemas import WorkPackage, WPState
+from build_platform.schemas import WorkPackage
 from build_platform.state import load_project
 
 TIER1_MAX_BYTES = 50_000

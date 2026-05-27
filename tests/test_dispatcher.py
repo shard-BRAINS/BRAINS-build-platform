@@ -13,7 +13,6 @@ from build_platform.dispatcher import (
     validate_diff,
 )
 from build_platform.ollama_client import OllamaClient
-from build_platform.paths import state_dir
 from build_platform.schemas import (
     Config,
     OllamaConfig,
