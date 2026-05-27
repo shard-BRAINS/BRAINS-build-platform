@@ -1,6 +1,26 @@
 # Dogfood findings — meta-build of brains-build-platform
 
 **Date:** 2026-05-26 · **Operator:** Claude (running the dogfood) · **Target:** the platform itself
+**Status (2026-05-27):** all 10 findings closed.
+
+## Resolution summary
+
+| # | Severity | Status | Commits |
+|---|---|---|---|
+| 1 | important | ✅ closed | `d202f11` (orphan-dep validation in package CLI) |
+| 2 | **critical** | ✅ closed | `ba4f695` (validate_diff strips markdown fences) |
+| 3 | important | ✅ closed | `84786cf` (tier-1 prompt scope discipline) |
+| 4 | important | ✅ addressed | partly downstream of #3; remaining risk is inherent to small models — Dev Orch review remains the mitigation |
+| 5 | minor | ✅ closed | `4b44c69` (mirror push `--dry-run`) |
+| 6 | minor | ✅ closed | (this session) `[BLOCKED]` title prefix + body banner on GitHub |
+| 7 | important | ✅ closed | (this session) `package_edit` CLI verb |
+| 8 | important | ✅ closed | `460a5c5` (`dispatch_apply` verb) |
+| 9 | minor | ✅ closed | (this session) persona-install preflight warning in tier-2 dispatch |
+| 10 | important | ✅ closed | `13b48b7` (`dispatch_reject` verb + audit on transition) |
+
+**Test count delta:** 49 (v0.1.0) → 113 (after 3 quick wins) → 123 (after round 2) → **138 after this session** (+89 across all dogfood-driven fixes).
+
+## Original findings (preserved for record)
 
 ## What we did
 

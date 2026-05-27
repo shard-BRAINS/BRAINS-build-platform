@@ -83,6 +83,44 @@ python -m build_platform.cli.package `
 
 ---
 
+## `python -m build_platform.cli.package_edit`
+
+Edit fields on an existing WP. Closes Finding #7 — pre-fix workaround was hand-editing `work-packages.jsonl`. Appends a history event and writes an audit entry.
+
+```powershell
+python -m build_platform.cli.package_edit --root . --wp WP-0001 --title "New title" --json
+python -m build_platform.cli.package_edit --root . --wp WP-0001 --tier 1 --add-file src/extra.py --json
+python -m build_platform.cli.package_edit --root . --wp WP-0001 --add-dep WP-0002 --remove-dep WP-0099 --json
+```
+
+**Editable fields:** `title`, `workstream`, `deliverable_id` (`--deliverable`), `tier`, `executor_persona` (`--executor`), `spec`.
+
+**Editable lists** (use add/remove pairs, repeatable):
+- `spec_files` — `--add-file PATH` / `--remove-file PATH`
+- `acceptance` — `--add-accept TEXT` / `--remove-accept TEXT`
+- `depends_on` — `--add-dep WP-X` / `--remove-dep WP-X`
+- `consult` — `--add-consult PERSONA` / `--remove-consult PERSONA`
+
+**NOT editable:** `id`, `created_by`, `created_at`, `state`, `history`. State has its own transition paths (`dispatch`, `dispatch_apply`, `dispatch_reject`).
+
+**Validation:**
+- `--add-dep` rejects WP IDs that don't exist (same as `package` CLI).
+- If the WP would end up tier-1 with > 3 files after the edit, the edit is refused.
+
+**Output:**
+```json
+{
+  "ok": true,
+  "wp_id": "WP-0001",
+  "changes": ["title: 'Original' -> 'Renamed'"],
+  "next": "Run /build-dispatch when ready (if WP is still in 'defined' state)."
+}
+```
+
+**Exit codes:** `0` success · `1` WP not found / no changes provided · `2` validation failure (orphan dep, tier-1 file overflow).
+
+---
+
 ## `python -m build_platform.cli.dispatch`
 
 Execute a work package. Routes to Ollama (tier-1) or emits a Claude subagent brief (tier-2).
@@ -117,9 +155,12 @@ python -m build_platform.cli.dispatch --root . --wp WP-0042 --json
   "wp_id": "WP-0042",
   "tier": 2,
   "brief": "<path to runs/WP-0042/tier2-brief.md>",
+  "warnings": [],
   "next": "Spawn build-backend-sme subagent with this brief"
 }
 ```
+
+`warnings` is populated when the persona's subagent file is missing at `~/.claude/agents/build/<persona>.md`. Run `install.ps1` from the build-platform repo to install all persona definitions. Brief generation still succeeds either way (you can read the brief and spawn the persona manually).
 
 **Side effects:** Updates WP state to `dispatched`. Appends a history event. Writes an audit entry at `audit/<wp-id>-<ts>.md`. Refreshes the dashboard.
 
