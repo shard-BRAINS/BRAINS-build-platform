@@ -226,19 +226,38 @@ def ensure_milestone(cfg: GitHubMirrorConfig, title: str,
     return int(created["number"])  # type: ignore[index]
 
 
+def _issue_title(wp: WorkPackage) -> str:
+    """Issue title with a [BLOCKED] prefix when WP state is blocked (Finding #6)."""
+    prefix = "[BLOCKED] " if wp.state == WPState.BLOCKED else ""
+    return f"{prefix}[{wp.id}] {wp.title}"
+
+
+def _blocker_banner(wp: WorkPackage) -> str:
+    """Body header rendered when state is blocked. Empty otherwise."""
+    if wp.state != WPState.BLOCKED:
+        return ""
+    last = wp.history[-1].event if wp.history else "no reason recorded"
+    return (
+        f"> ⚠️ **This work package is BLOCKED.**\n"
+        f"> Last event: _{last}_\n"
+        f"> Resolve via `/build-decision` or a follow-up WP, then re-dispatch.\n\n"
+    )
+
+
 def push_workpackage(cfg: GitHubMirrorConfig, wp: WorkPackage,
                      mirror_map: MirrorMap,
                      *, milestone_number: int | None = None) -> int:
     """Create or update the issue for a WP. Returns the issue number."""
     repo = _repo_arg(cfg)
-    body = _wp_body(wp)
+    title = _issue_title(wp)
+    body = _blocker_banner(wp) + _wp_body(wp)
     labels = _wp_labels(cfg.label_prefix, wp)
 
     if wp.id in mirror_map.wps:
         number = mirror_map.wps[wp.id]
         edit_args = [
             "issue", "edit", str(number), "--repo", repo,
-            "--title", f"[{wp.id}] {wp.title}",
+            "--title", title,
             "--body", body,
         ]
         for label in labels:
@@ -254,7 +273,7 @@ def push_workpackage(cfg: GitHubMirrorConfig, wp: WorkPackage,
 
     create_args = [
         "issue", "create", "--repo", repo,
-        "--title", f"[{wp.id}] {wp.title}",
+        "--title", title,
         "--body", body,
     ]
     for label in labels:

@@ -15,6 +15,8 @@ from build_platform.cli.package import package_cmd
 from build_platform.github_mirror import (
     MirrorError,
     MirrorMap,
+    _blocker_banner,
+    _issue_title,
     _wp_body,
     _wp_labels,
     load_mirror_map,
@@ -140,6 +142,40 @@ def test_wp_body_contains_managed_marker_and_sections():
     assert "## Files in scope" in body
     assert "## History" in body
     assert "implement thing" in body
+
+
+def test_issue_title_no_prefix_when_not_blocked():
+    """Finding #6: title has no [BLOCKED] prefix for non-blocked states."""
+    for state in (WPState.DEFINED, WPState.DISPATCHED, WPState.IN_REVIEW, WPState.DONE):
+        wp = _make_wp(state=state)
+        title = _issue_title(wp)
+        assert title == f"[{wp.id}] {wp.title}"
+        assert "[BLOCKED]" not in title
+
+
+def test_issue_title_has_blocked_prefix_when_blocked():
+    """Finding #6: blocked WPs get a [BLOCKED] prefix in the issue title."""
+    wp = _make_wp(state=WPState.BLOCKED)
+    title = _issue_title(wp)
+    assert title.startswith("[BLOCKED] ")
+
+
+def test_blocker_banner_empty_when_not_blocked():
+    for state in (WPState.DEFINED, WPState.DISPATCHED, WPState.IN_REVIEW, WPState.DONE):
+        assert _blocker_banner(_make_wp(state=state)) == ""
+
+
+def test_blocker_banner_present_when_blocked():
+    """Finding #6: body has a prominent banner when blocked."""
+    from build_platform.schemas import WPHistoryEvent
+    wp = _make_wp(state=WPState.BLOCKED, history=[
+        WPHistoryEvent(at="2026-05-27T10:00:00Z", by="build-dev-orchestrator",
+                       event="rejected: out-of-scope changes")
+    ])
+    banner = _blocker_banner(wp)
+    assert "BLOCKED" in banner
+    assert "rejected: out-of-scope changes" in banner
+    assert "/build-decision" in banner
 
 
 # ---------------------------------------------------------------------------
