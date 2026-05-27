@@ -28,7 +28,7 @@ from build_platform.schemas import (
     WPState,
     WPTier,
 )
-from build_platform.state import load_config
+from build_platform.state import load_config, load_wp_state, update_wp_state
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +68,9 @@ class GhRecorder:
         self.next_milestone_number = 1
         self.existing_labels: list[str] = []
         self.existing_milestones: list[dict] = []
+        # v2.6 pull-side response stubs, keyed by issue number
+        self.remote_issue_states: dict[int, dict] = {}  # {num: {state, closedAt, author}}
+        self.remote_issue_comments: dict[int, list[dict]] = {}  # {num: [comment...]}
 
     def __call__(self, args: list[str], *, input_: str | None = None) -> str:
         self.calls.append(args)
@@ -86,6 +89,18 @@ class GhRecorder:
             return ""
         if args[:2] == ["issue", "reopen"]:
             return ""
+        if args[:2] == ["issue", "view"]:
+            num = int(args[2])
+            state = self.remote_issue_states.get(num, {"state": "OPEN", "closedAt": None, "author": {"login": "github"}})
+            return json.dumps(state)
+        if args[0] == "api" and "/comments" in args[1]:
+            # /comments endpoint: extract issue number from path
+            path = args[1]
+            try:
+                num = int(path.split("/")[-2])
+            except (IndexError, ValueError):
+                num = 0
+            return json.dumps(self.remote_issue_comments.get(num, []))
         if args[0] == "api" and args[1].endswith("/milestones") and "-f" not in args:
             return json.dumps(self.existing_milestones)
         if args[0] == "api" and args[1].endswith("/milestones"):
@@ -197,6 +212,28 @@ def test_load_mirror_map_default_when_missing(tmp_path: Path):
     mm = load_mirror_map(tmp_path)
     assert mm.wps == {}
     assert mm.labels_seeded is False
+
+
+def test_mirror_map_seen_comments_default_empty(tmp_path: Path):
+    """WP-0001: seen_comments defaults to {} for fresh maps and existing maps without it."""
+    _init_project(tmp_path)
+    mm = MirrorMap()
+    assert mm.seen_comments == {}
+    # Persist + reload — pydantic should accept the missing-key case
+    save_mirror_map(tmp_path, mm)
+    assert load_mirror_map(tmp_path).seen_comments == {}
+
+
+def test_mirror_map_seen_comments_round_trip(tmp_path: Path):
+    """WP-0001: seen_comments persists round-trip with the right shape."""
+    _init_project(tmp_path)
+    mm = MirrorMap(
+        wps={"WP-0001": 1},
+        seen_comments={"1": [101, 102], "2": [201]},
+    )
+    save_mirror_map(tmp_path, mm)
+    loaded = load_mirror_map(tmp_path)
+    assert loaded.seen_comments == {"1": [101, 102], "2": [201]}
 
 
 # ---------------------------------------------------------------------------
@@ -412,3 +449,260 @@ def test_mirror_dry_run_refuses_when_disabled(tmp_path: Path, mock_gh):
     ])
     assert r.exit_code == 2
     assert "disabled" in r.output.lower()
+
+
+# ===========================================================================
+# v2.6 — Two-way mirror sync (PULL)
+# ===========================================================================
+
+# WP-0002: pull skeleton
+
+def test_mirror_pull_refuses_when_disabled(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    runner = CliRunner()
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    assert r.exit_code == 2
+    assert "disabled" in r.output.lower()
+
+
+def test_mirror_pull_no_op_when_no_mapped_wps(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    assert r.exit_code == 0, r.output
+    payload = json.loads(r.output)
+    assert payload["remote_states"] == []
+    assert payload["transitions"] == []
+    assert payload["ingested_decisions"] == []
+
+
+def test_mirror_pull_fetches_remote_states_for_mapped_wps(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    # Now WP-0001 is mapped to issue 100. Set remote state on it.
+    mock_gh.remote_issue_states[100] = {
+        "state": "OPEN", "closedAt": None, "author": {"login": "alice"},
+    }
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    assert r.exit_code == 0, r.output
+    payload = json.loads(r.output)
+    assert len(payload["remote_states"]) == 1
+    assert payload["remote_states"][0]["wp_id"] == "WP-0001"
+    assert payload["remote_states"][0]["issue"] == 100
+
+
+# WP-0003: state reconciliation
+
+def test_pull_closed_remote_transitions_defined_wp_to_done(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    mock_gh.remote_issue_states[100] = {
+        "state": "CLOSED", "closedAt": "2026-05-27T10:00:00Z",
+        "author": {"login": "alice"},
+    }
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    payload = json.loads(r.output)
+    assert {"wp_id": "WP-0001", "from": "defined", "to": "done"} in payload["transitions"]
+    wps = load_wp_state(tmp_path)
+    assert wps["WP-0001"].state == WPState.DONE
+    # History event records the github actor
+    assert "github:alice" in wps["WP-0001"].history[-1].by
+
+
+def test_pull_closed_remote_no_op_when_local_already_done(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    update_wp_state(tmp_path, "WP-0001", WPState.DONE,
+                    by="test-setup", event="manual to DONE")
+    mock_gh.remote_issue_states[100] = {
+        "state": "CLOSED", "closedAt": "2026-05-27T10:00:00Z",
+        "author": {"login": "alice"},
+    }
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    payload = json.loads(r.output)
+    assert payload["transitions"] == []
+
+
+def test_pull_closed_remote_preserves_local_blocked(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    update_wp_state(tmp_path, "WP-0001", WPState.BLOCKED,
+                    by="test-setup", event="blocked locally")
+    mock_gh.remote_issue_states[100] = {
+        "state": "CLOSED", "closedAt": None, "author": {"login": "alice"},
+    }
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    payload = json.loads(r.output)
+    # Skip flagged in transitions, but local state preserved
+    assert any(t.get("skipped") for t in payload["transitions"])
+    assert load_wp_state(tmp_path)["WP-0001"].state == WPState.BLOCKED
+
+
+def test_pull_open_remote_transitions_done_wp_to_blocked(tmp_path: Path, mock_gh):
+    """Someone reopened a done issue on GitHub — surface as blocked for review."""
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    update_wp_state(tmp_path, "WP-0001", WPState.DONE,
+                    by="test-setup", event="locally done")
+    mock_gh.remote_issue_states[100] = {
+        "state": "OPEN", "closedAt": None, "author": {"login": "bob"},
+    }
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    payload = json.loads(r.output)
+    assert {"wp_id": "WP-0001", "from": "done", "to": "blocked"} in payload["transitions"]
+    assert load_wp_state(tmp_path)["WP-0001"].state == WPState.BLOCKED
+
+
+# WP-0004: bbp:decision comment ingestion
+
+def test_parse_bbp_decision_comment_happy_path():
+    body = (
+        "bbp:decision\n"
+        "title: Use Argon2 for password hashing\n"
+        "owner: build-security-sme\n"
+        "decision: Argon2id with t=3, m=64MB, p=4\n"
+        "why: OWASP 2024 recommendation; prior bcrypt flagged\n"
+        "alternatives: bcrypt:weaker, legacy; scrypt:less library support\n"
+        "related-wp: WP-0041, WP-0042\n"
+    )
+    from build_platform.github_mirror import parse_bbp_decision_comment
+    parsed = parse_bbp_decision_comment(body)
+    assert parsed is not None
+    assert parsed["title"] == "Use Argon2 for password hashing"
+    assert parsed["owner"] == "build-security-sme"
+    assert "Argon2id" in parsed["decision"]
+    assert parsed["related_wps"] == ["WP-0041", "WP-0042"]
+
+
+def test_parse_bbp_decision_comment_returns_none_for_non_decision():
+    from build_platform.github_mirror import parse_bbp_decision_comment
+    assert parse_bbp_decision_comment("just a regular comment") is None
+    assert parse_bbp_decision_comment("") is None
+
+
+def test_parse_bbp_decision_comment_requires_title_and_decision():
+    from build_platform.github_mirror import parse_bbp_decision_comment
+    # Missing decision
+    assert parse_bbp_decision_comment("bbp:decision\ntitle: X\nwhy: Y") is None
+    # Missing title
+    assert parse_bbp_decision_comment("bbp:decision\ndecision: X\nwhy: Y") is None
+
+
+def test_pull_ingests_decision_comment_into_decisions_md(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    mock_gh.remote_issue_states[100] = {
+        "state": "OPEN", "closedAt": None, "author": {"login": "alice"},
+    }
+    mock_gh.remote_issue_comments[100] = [{
+        "id": 5001,
+        "author": {"login": "alice"},
+        "body": (
+            "bbp:decision\n"
+            "title: Use Argon2 for password hashing\n"
+            "owner: build-security-sme\n"
+            "decision: Argon2id with t=3, m=64MB, p=4\n"
+            "why: OWASP 2024 recommendation\n"
+            "related-wp: WP-0001\n"
+        ),
+        "created_at": "2026-05-27T10:30:00Z",
+        "html_url": "https://github.com/x/y/issues/100#issuecomment-5001",
+    }]
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    payload = json.loads(r.output)
+    assert len(payload["ingested_decisions"]) == 1
+    assert payload["ingested_decisions"][0]["comment_id"] == 5001
+    decisions = (tmp_path / ".brains-build" / "decisions.md").read_text(encoding="utf-8")
+    assert "Use Argon2 for password hashing" in decisions
+    assert "Argon2id" in decisions
+
+
+def test_pull_decision_ingestion_is_idempotent(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    mock_gh.remote_issue_states[100] = {
+        "state": "OPEN", "closedAt": None, "author": {"login": "alice"},
+    }
+    mock_gh.remote_issue_comments[100] = [{
+        "id": 5001, "author": {"login": "alice"},
+        "body": "bbp:decision\ntitle: T\ndecision: D\nwhy: W",
+        "created_at": "2026-05-27T10:30:00Z",
+        "html_url": "https://example/comment",
+    }]
+    runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    decisions_after_first = (tmp_path / ".brains-build" / "decisions.md").read_text(encoding="utf-8")
+    r2 = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    payload2 = json.loads(r2.output)
+    assert payload2["ingested_decisions"] == []
+    decisions_after_second = (tmp_path / ".brains-build" / "decisions.md").read_text(encoding="utf-8")
+    assert decisions_after_first == decisions_after_second
+    # seen_comments contains the comment id
+    mm = load_mirror_map(tmp_path)
+    assert 5001 in mm.seen_comments.get("100", [])
+
+
+def test_pull_ignores_non_decision_comments(tmp_path: Path, mock_gh):
+    _init_project(tmp_path)
+    _add_wp(tmp_path, "Task one")
+    runner = CliRunner()
+    runner.invoke(mirror_group, [
+        "init", "--root", str(tmp_path),
+        "--owner", "shard-BRAINS", "--repo", "demo", "--json",
+    ])
+    runner.invoke(mirror_group, ["push", "--root", str(tmp_path), "--json"])
+    mock_gh.remote_issue_states[100] = {
+        "state": "OPEN", "closedAt": None, "author": {"login": "alice"},
+    }
+    mock_gh.remote_issue_comments[100] = [
+        {"id": 1, "author": {"login": "x"}, "body": "Looks good!", "created_at": "2026-05-27T10:00:00Z", "html_url": ""},
+        {"id": 2, "author": {"login": "x"}, "body": "lgtm 👍", "created_at": "2026-05-27T11:00:00Z", "html_url": ""},
+    ]
+    r = runner.invoke(mirror_group, ["pull", "--root", str(tmp_path), "--json"])
+    payload = json.loads(r.output)
+    assert payload["ingested_decisions"] == []

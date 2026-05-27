@@ -11,6 +11,7 @@ import click
 from build_platform.github_mirror import (
     MirrorError,
     load_mirror_map,
+    pull_all,
     push_all,
 )
 from build_platform.paths import find_brains_build_root
@@ -73,6 +74,30 @@ def push_cmd(root, dry_run, as_json):
     root_path = Path(root).resolve() if root else find_brains_build_root()
     try:
         summary = push_all(root_path, dry_run=dry_run)
+    except MirrorError as e:
+        _emit({"error": str(e)}, as_json=as_json, exit_code=2)
+    _emit(summary, as_json=as_json)
+
+
+@mirror_group.command("pull")
+@click.option("--root", type=click.Path(file_okay=False), default=None)
+@click.option("--json", "as_json", is_flag=True)
+def pull_cmd(root, as_json):
+    """v2.6: reconcile remote GitHub state back into local .brains-build/.
+
+    For each mapped WP:
+      - Closed remote issue with local state in (defined/dispatched/in_review)
+        -> local transitions to DONE (by=github:<actor>).
+      - Open remote issue with local state DONE -> local transitions to BLOCKED.
+      - Local state BLOCKED is preserved even on closed remote (manual review).
+
+    For each mapped issue's comments:
+      - Any new comment whose first line is 'bbp:decision' is parsed into the
+        decisions.md schema and appended. Idempotency via seen_comments map.
+    """
+    root_path = Path(root).resolve() if root else find_brains_build_root()
+    try:
+        summary = pull_all(root_path)
     except MirrorError as e:
         _emit({"error": str(e)}, as_json=as_json, exit_code=2)
     _emit(summary, as_json=as_json)

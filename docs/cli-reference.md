@@ -432,6 +432,38 @@ Reconciles everything. On first run, seeds platform labels (state-*, tier-1/2, w
 
 **Exit codes:** `0` success · `2` mirror disabled or `gh` failure.
 
+### `mirror pull` (v2.6)
+
+```powershell
+python -m build_platform.cli.mirror pull --root . --json
+```
+
+Reconcile remote GitHub signals back into local state. Read-only on GitHub.
+
+**State-transition rules** (applied per mapped WP):
+
+| Remote | Local | Result |
+|---|---|---|
+| closed | defined / dispatched / in_review | local → `done`, by=`github:<actor>` |
+| closed | done | no-op |
+| closed | blocked | preserved (recorded as `skipped` in output for manual review) |
+| open | done | local → `blocked` (issue reopened; surface for review) |
+| open | anything else | no-op |
+
+**Decision-comment ingestion:** any comment whose first line is `bbp:decision` is parsed and appended to `decisions.md`. Idempotent via `mirror_map.seen_comments`. Required fields: `title` and `decision`; optional: `owner`, `why`, `alternatives`, `related-wp`.
+
+**Output:**
+```json
+{
+  "ok": true, "repo": "shard-BRAINS/demo",
+  "remote_states": [{"wp_id": "WP-X", "issue": N, "remote_state": "closed|open", "author": "..."}],
+  "transitions": [{"wp_id": "WP-X", "from": "...", "to": "..."}],
+  "ingested_decisions": [{"comment_id": N, "title": "...", "from_wp": "WP-X", "from_issue": N}]
+}
+```
+
+**Exit codes:** `0` success · `2` mirror disabled.
+
 ### `mirror status`
 
 ```powershell

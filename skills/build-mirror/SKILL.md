@@ -5,7 +5,7 @@ description: One-way push mirror of the active project's WPs and sprints to GitH
 
 # Mirror local state to GitHub
 
-The mirror is **one-way** (local → GitHub). Local files stay canonical for writes. GitHub becomes a readable surface for stakeholders without Claude Code. Two-way sync (PR merges close WPs, issue comments → decisions) is planned for v2.6.
+The mirror is **mostly one-way** (local → GitHub) with a **read-back pull verb** added in v2.6. Local files remain canonical for writes; the pull verb reconciles a small set of remote signals (issue close/reopen, `bbp:decision` comments) back into local state. Anything else on GitHub is ignored.
 
 ## Mapping
 
@@ -55,6 +55,54 @@ Idempotent. On first run:
 4. Closes the issue if `state=done`; reopens if `state=blocked`.
 
 The wp_id → issue_number and sprint_id → milestone_number maps are persisted at `.brains-build/github-mirror.json`. Second push only edits issues whose state changed.
+
+### `pull` — reconcile remote signals back to local (v2.6)
+
+```powershell
+python -m build_platform.cli.mirror pull --root . --json
+```
+
+For each WP currently mapped to an issue:
+
+1. **State sync.** Fetches remote issue state via `gh issue view --json state,closedAt,author`. Applies these rules:
+   - Remote `closed` + local in (`defined`, `dispatched`, `in_review`) → local transitions to `done`, history event `by=github:<actor>`.
+   - Remote `closed` + local already `done` → no-op.
+   - Remote `closed` + local `blocked` → **preserved** (manual review). Surfaced in the `transitions` list with a `skipped` field.
+   - Remote `open` + local `done` → local transitions to `blocked` (someone reopened the issue; needs review).
+   - All other combinations: no-op.
+
+2. **Decision ingestion.** Fetches comments via the REST API (gh issue view doesn't return comment ids). Any comment whose **first line is `bbp:decision`** is parsed and appended to `decisions.md`. Idempotent via `mirror_map.seen_comments[issue_number_str]` — second pull with the same comments is a no-op.
+
+Expected `bbp:decision` comment format:
+```
+bbp:decision
+title: <one-line decision title>
+owner: <persona id or user:name>
+decision: <one sentence>
+why: <rationale>
+alternatives: name1:why rejected; name2:why rejected   (optional)
+related-wp: WP-XXXX, WP-YYYY                            (optional)
+```
+
+Required fields: `title` and `decision`. Missing either → the comment is ignored.
+
+**Output:**
+```json
+{
+  "ok": true,
+  "repo": "shard-BRAINS/demo",
+  "remote_states": [{"wp_id": "WP-0001", "issue": 100, "remote_state": "closed", "author": "alice"}, ...],
+  "transitions": [{"wp_id": "WP-0001", "from": "defined", "to": "done"}, ...],
+  "ingested_decisions": [{"comment_id": 9001, "title": "...", "from_wp": "WP-0002", "from_issue": 101}]
+}
+```
+
+**When to pull:**
+- After a teammate closes a mirrored issue on GitHub (signals the WP is done).
+- After a teammate posts a `bbp:decision` comment that should land in `decisions.md`.
+- Periodically as part of a cadence (could be wired up via `/build-schedule-scrum`-style routine in a future verb).
+
+**Pull does NOT:** create / edit / close / reopen issues, modify labels, push anything. Read-only on GitHub by design.
 
 ### `status` — inspect mirror state
 

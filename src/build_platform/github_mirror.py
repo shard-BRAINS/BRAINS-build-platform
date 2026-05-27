@@ -35,9 +35,15 @@ class MirrorError(RuntimeError):
 
 
 class MirrorMap(BaseModel):
-    """Persisted wp_id -> issue_number and sprint_id -> milestone_number maps."""
+    """Persisted maps for the mirror.
+
+    - wps: wp_id -> issue_number
+    - sprints: sprint_id -> milestone_number
+    - seen_comments: issue_number_str -> [comment_id, ...] (v2.6 pull idempotency)
+    """
     wps: dict[str, int] = Field(default_factory=dict)
     sprints: dict[str, int] = Field(default_factory=dict)
+    seen_comments: dict[str, list[int]] = Field(default_factory=dict)
     labels_seeded: bool = False
 
 
@@ -381,6 +387,236 @@ def plan_push(project_root: Path) -> dict:
             "labels_to_create": len(labels_to_create),
             "sprints_to_create": sum(1 for s in sprint_plan if s["action"] == "create"),
         },
+    }
+
+
+# ---------------------------------------------------------------------------
+# v2.6 Pull side — read remote state, reconcile local
+# ---------------------------------------------------------------------------
+
+def fetch_issue_state(cfg: GitHubMirrorConfig, issue_number: int) -> dict:
+    """Return {state, closed_at, author_login} for one issue. Used by pull
+    to detect remote state changes (closed/reopened)."""
+    repo = _repo_arg(cfg)
+    raw = _gh_json([
+        "issue", "view", str(issue_number), "--repo", repo,
+        "--json", "state,closedAt,author",
+    ])
+    return {
+        "state": raw.get("state", "").lower(),  # type: ignore[union-attr]
+        "closed_at": raw.get("closedAt"),       # type: ignore[union-attr]
+        "author_login": (raw.get("author") or {}).get("login", "github"),  # type: ignore[union-attr]
+    }
+
+
+def fetch_issue_comments(cfg: GitHubMirrorConfig, issue_number: int) -> list[dict]:
+    """Return all comments on an issue. Uses the REST API (not `gh issue view`)
+    because the latter does not return comment ids — which we need for the
+    seen_comments idempotency map."""
+    repo = _repo_arg(cfg)
+    return _gh_json([
+        "api", f"repos/{repo}/issues/{issue_number}/comments",
+        "--paginate",
+    ])  # type: ignore[return-value]
+
+
+def parse_bbp_decision_comment(body: str) -> dict | None:
+    """Parse a comment body as a bbp:decision payload, or return None.
+
+    Expected format (first line MUST be 'bbp:decision'):
+
+      bbp:decision
+      title: <one line>
+      owner: <persona id or user:name>
+      decision: <one sentence>
+      why: <rationale>
+      alternatives: name1:reason; name2:reason   (optional)
+      related-wp: WP-XXXX, WP-YYYY               (optional)
+
+    Returns a dict with normalized keys, or None if not a decision comment
+    or missing required fields (title, decision).
+    """
+    lines = body.strip().splitlines()
+    if not lines or lines[0].strip() != "bbp:decision":
+        return None
+    fields: dict[str, str] = {}
+    for line in lines[1:]:
+        if ":" in line:
+            key, _, value = line.partition(":")
+            fields[key.strip().lower()] = value.strip()
+    if not fields.get("title") or not fields.get("decision"):
+        return None
+    related = fields.get("related-wp", "")
+    return {
+        "title": fields["title"],
+        "owner": fields.get("owner", "user"),
+        "decision": fields["decision"],
+        "why": fields.get("why", ""),
+        "alternatives": fields.get("alternatives", ""),
+        "related_wps": [w.strip() for w in related.split(",") if w.strip()],
+    }
+
+
+def _format_decision_entry(date: str, parsed: dict, source_url: str) -> str:
+    """Render a parsed bbp:decision dict into the decisions.md schema."""
+    alts = parsed.get("alternatives", "")
+    if alts:
+        alt_str = ", ".join(
+            f"{a.split(':', 1)[0].strip()} (rejected: {a.split(':', 1)[1].strip() if ':' in a else '—'})"
+            for a in alts.split(";") if a.strip()
+        )
+    else:
+        alt_str = "_None_"
+    related = ", ".join(parsed["related_wps"]) or "_None_"
+    return (
+        f"\n## {date} — {parsed['title']}\n"
+        f"**Owner:** {parsed['owner']}\n"
+        f"**Decision:** {parsed['decision']}\n"
+        f"**Why:** {parsed['why'] or '_Not specified_'}\n"
+        f"**Alternatives considered:** {alt_str}\n"
+        f"**Related WPs:** {related}\n"
+        f"**Source:** [GitHub comment]({source_url})\n"
+    )
+
+
+def _reconcile_wp_state(
+    project_root: Path,
+    wp_id: str,
+    local_state: WPState,
+    remote: dict,
+) -> dict | None:
+    """Apply WP-0003 state-transition rules.
+
+    Returns a dict describing the transition that happened, or None if no-op.
+    """
+    remote_state = remote["state"]
+    actor = remote["author_login"]
+    by = f"github:{actor}"
+
+    # Remote closed -> local should be DONE (if it isn't already).
+    if remote_state == "closed":
+        if local_state == WPState.DONE:
+            return None
+        # Only transition from non-terminal states; preserve BLOCKED as a signal.
+        if local_state == WPState.BLOCKED:
+            return {"wp_id": wp_id, "from": local_state.value, "to": None,
+                    "skipped": "remote closed but local is blocked; manual review"}
+        from build_platform.state import update_wp_state
+        update_wp_state(project_root, wp_id, WPState.DONE,
+                        by=by, event=f"remote issue closed by {actor}")
+        return {"wp_id": wp_id, "from": local_state.value, "to": "done"}
+
+    # Remote open + local previously DONE -> someone reopened; surface as blocked.
+    if remote_state == "open" and local_state == WPState.DONE:
+        from build_platform.state import update_wp_state
+        update_wp_state(project_root, wp_id, WPState.BLOCKED,
+                        by=by, event=f"remote issue reopened by {actor}; needs review")
+        return {"wp_id": wp_id, "from": "done", "to": "blocked"}
+
+    return None  # all other combos: no-op
+
+
+def _ingest_new_decision_comments(
+    project_root: Path,
+    cfg: GitHubMirrorConfig,
+    wp_id: str,
+    issue_number: int,
+    mirror_map: MirrorMap,
+) -> list[dict]:
+    """WP-0004: fetch comments, append new bbp:decision ones to decisions.md.
+
+    Idempotency: tracks ingested comment ids in mirror_map.seen_comments
+    keyed by str(issue_number). Returns the list of ingested decisions.
+    """
+    key = str(issue_number)
+    seen = set(mirror_map.seen_comments.get(key, []))
+    try:
+        comments = fetch_issue_comments(cfg, issue_number)
+    except MirrorError:
+        return []
+
+    decisions_md = state_dir(project_root).parent / ".brains-build" / "decisions.md"
+    # state_dir already returns .brains-build/, so this just resolves to the file:
+    decisions_md = state_dir(project_root) / "decisions.md"
+
+    ingested: list[dict] = []
+    for c in comments:
+        cid = c.get("id")
+        if cid is None or cid in seen:
+            continue
+        parsed = parse_bbp_decision_comment(c.get("body", ""))
+        if parsed is None:
+            continue
+        created_at = c.get("created_at", "")
+        date = (created_at[:10] if created_at else datetime.now(timezone.utc).date().isoformat())
+        entry = _format_decision_entry(date, parsed, c.get("html_url", ""))
+        with decisions_md.open("a", encoding="utf-8") as f:
+            f.write(entry)
+        seen.add(cid)
+        ingested.append({
+            "comment_id": cid,
+            "title": parsed["title"],
+            "from_wp": wp_id,
+            "from_issue": issue_number,
+        })
+
+    if ingested:
+        mirror_map.seen_comments[key] = sorted(seen)
+    return ingested
+
+
+def pull_all(project_root: Path) -> dict:
+    """v2.6: reconcile remote (GitHub) -> local. Returns a summary dict.
+
+    Drives WP-0002/0003/0004 together:
+      - For each mapped WP: fetch issue state + comments via gh.
+      - Apply state-transition rules (closed -> done, reopened-done -> blocked).
+      - Ingest new bbp:decision comments to decisions.md (idempotent).
+    """
+    config = load_config(project_root)
+    cfg = config.github
+    if not cfg.enabled:
+        raise MirrorError(
+            "GitHub mirror is disabled. Run `/build-mirror init --owner X --repo Y` first."
+        )
+
+    mirror_map = load_mirror_map(project_root)
+    wps_state = {wp.id: wp.state for wp in load_work_packages(project_root)}
+
+    remote_states: list[dict] = []
+    transitions: list[dict] = []
+    ingested_decisions: list[dict] = []
+
+    for wp_id, issue_number in sorted(mirror_map.wps.items()):
+        try:
+            remote = fetch_issue_state(cfg, issue_number)
+        except MirrorError:
+            remote_states.append({"wp_id": wp_id, "issue": issue_number, "error": "fetch failed"})
+            continue
+        remote_states.append({
+            "wp_id": wp_id, "issue": issue_number,
+            "remote_state": remote["state"],
+            "author": remote["author_login"],
+        })
+
+        local = wps_state.get(wp_id)
+        if local is not None:
+            transition = _reconcile_wp_state(project_root, wp_id, local, remote)
+            if transition is not None:
+                transitions.append(transition)
+
+        ingested_decisions.extend(
+            _ingest_new_decision_comments(project_root, cfg, wp_id, issue_number, mirror_map)
+        )
+
+    save_mirror_map(project_root, mirror_map)
+
+    return {
+        "ok": True,
+        "repo": _repo_arg(cfg),
+        "remote_states": remote_states,
+        "transitions": transitions,
+        "ingested_decisions": ingested_decisions,
     }
 
 
