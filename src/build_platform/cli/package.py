@@ -8,7 +8,7 @@ from pathlib import Path
 import click
 
 from build_platform.paths import find_brains_build_root
-from build_platform.schemas import WorkPackage, WPState, WPTier
+from build_platform.schemas import Autonomy, WorkPackage, WPState, WPTier
 from build_platform.state import append_work_package, load_work_packages, next_wp_id
 
 
@@ -25,12 +25,20 @@ from build_platform.state import append_work_package, load_work_packages, next_w
 @click.option("--depends-on", "depends_on", multiple=True, default=())
 @click.option("--consult", multiple=True, default=())
 @click.option("--created-by", default="build-dev-orchestrator")
+@click.option("--autonomy", type=click.Choice(["manual", "review-on-complete", "auto"]),
+              default="manual", show_default=True)
 @click.option("--json", "as_json", is_flag=True)
 def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
-                spec, spec_files, acceptance, depends_on, consult, created_by, as_json):
+                spec, spec_files, acceptance, depends_on, consult, created_by, autonomy, as_json):
     root_path = Path(root).resolve() if root else find_brains_build_root()
     existing_wps = load_work_packages(root_path)
     existing_ids = {wp.id for wp in existing_wps}
+
+    # Reject auto autonomy for tier-2 WPs (auto-dispatch is tier-1-only).
+    if autonomy == "auto" and tier == "2":
+        payload = {"error": "autonomy=auto is only allowed for tier-1 WPs; tier-2 always requires review."}
+        click.echo(json.dumps(payload) if as_json else payload["error"], err=True)
+        sys.exit(2)
 
     # Finding #1: reject orphan --depends-on IDs at WP-creation time, not at dispatch.
     orphans = [d for d in depends_on if d not in existing_ids]
@@ -51,6 +59,7 @@ def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
         state=WPState.DEFINED, created_by=created_by,
         created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         history=[],
+        autonomy=Autonomy(autonomy),
     )
     if wp.tier == WPTier.ONE:
         if len(wp.spec_files) > 3:

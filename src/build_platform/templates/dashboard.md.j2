@@ -44,11 +44,24 @@ What I'd do next: {{ next_action or "_None_" }}
 {% if b.suggestion %}  Suggested resolution: {{ b.suggestion }}
 {% endif %}{% endfor %}{% else %}_None_
 {% endif %}
+## Pending decisions (needs you)
+{% if pending_decisions %}{% for p in pending_decisions %}- **{{ p.wp_id }}** ({{ p.workstream }}) — {{ p.title }}
+  Reason: _{{ p.reason }}_
+  Suggested next step: {{ p.suggestion }}
+{% endfor %}{% else %}_None_
+{% endif %}
 ## Recent decisions (last 7 days)
 {% if decisions %}{% for d in decisions %}- {{ d.date }}: {{ d.title }} (owner: {{ d.owner }}) → {{ d.related }}
 {% endfor %}{% else %}_None_
 {% endif %}
 ## Up next (this sprint, in priority order)
-{% if up_next %}{% for wp in up_next %}{{ loop.index }}. {{ wp.id }} — {{ wp.title }} ({{ wp.workstream }}, tier-{{ wp.tier }})
+{% if up_next %}{% for wp in up_next %}{{ loop.index }}. {{ wp.id }} — {{ wp.title }} ({{ wp.workstream }}, tier-{{ wp.tier }} · autonomy: {{ wp.autonomy }})
+{% endfor %}{% else %}_None_
+{% endif %}
+## Cost burn (lifetime)
+Total: ${{ "%.4f"|format(cost_burn.total_usd) }} · Tokens in: {{ cost_burn.total_tokens_in }} · Tokens out: {{ cost_burn.total_tokens_out }}
+{% if cost_burn.by_persona %}| Persona | Dispatches | Tokens in | Tokens out | Cost (USD) |
+|---|---|---|---|---|
+{% for p in cost_burn.by_persona %}| {{ p.persona }} | {{ p.dispatches }} | {{ p.tokens_in }} | {{ p.tokens_out }} | ${{ "%.4f"|format(p.cost_usd) }} |
 {% endfor %}{% else %}_None_
 {% endif %}

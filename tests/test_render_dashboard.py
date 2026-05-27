@@ -1,12 +1,14 @@
 """Tests for render_dashboard.py."""
 from pathlib import Path
 
+from build_platform.audit import AuditEntry, write_audit
 from build_platform.render_dashboard import (
     render_dashboard,
     render_dashboard_all,
     render_dashboard_html,
 )
 from build_platform.schemas import (
+    Autonomy,
     Config,
     Deliverable,
     OllamaConfig,
@@ -25,6 +27,7 @@ from build_platform.state import (
     save_deliverables,
     save_project,
     save_workstreams,
+    update_wp_state,
 )
 
 
@@ -170,3 +173,91 @@ def test_render_dashboard_all_writes_both(tmp_path: Path):
     assert paths["html"].exists()
     assert paths["md"].name == "current.md"
     assert paths["html"].name == "current.html"
+
+
+# --- Autonomy column, pending decisions, cost burn ---
+
+def _seed_extended(tmp_path: Path) -> Path:
+    """Extend _seed with an auto WP, a blocked WP, and audit entries."""
+    _seed(tmp_path)
+    append_work_package(tmp_path, WorkPackage(
+        id="WP-0003", title="Auto tier1 job", workstream="backend",
+        deliverable_id="D-auth", tier=WPTier.ONE,
+        executor_persona="build-backend-sme", spec="auto spec",
+        spec_files=["src/auto.py"], acceptance=["ok"], depends_on=[], consult=[],
+        state=WPState.DEFINED, created_by="build-dev-orchestrator",
+        created_at="2026-05-25T11:00:00Z", history=[],
+        autonomy=Autonomy.AUTO,
+    ))
+    return tmp_path
+
+
+def test_dashboard_md_includes_autonomy_per_up_next(tmp_path: Path):
+    _seed_extended(tmp_path)
+    out = render_dashboard(tmp_path)
+    text = out.read_text(encoding="utf-8")
+    # WP-0002 has default autonomy=manual, WP-0003 has auto
+    assert "manual" in text
+    assert "auto" in text
+
+
+def test_dashboard_md_includes_pending_decisions_section(tmp_path: Path):
+    _seed(tmp_path)
+    out = render_dashboard(tmp_path)
+    text = out.read_text(encoding="utf-8")
+    assert "## Pending decisions" in text
+
+
+def test_dashboard_md_pending_decisions_lists_blocked_wp(tmp_path: Path):
+    _seed(tmp_path)
+    update_wp_state(tmp_path, "WP-0002", WPState.BLOCKED,
+                    by="build-dev-orchestrator", event="blocked for test")
+    out = render_dashboard(tmp_path)
+    text = out.read_text(encoding="utf-8")
+    assert "WP-0002" in text
+    assert "blocked for test" in text
+
+
+def test_dashboard_md_includes_cost_burn_section(tmp_path: Path):
+    _seed(tmp_path)
+    out = render_dashboard(tmp_path)
+    text = out.read_text(encoding="utf-8")
+    assert "## Cost burn" in text
+
+
+def test_dashboard_md_cost_burn_rolls_up_audit_index(tmp_path: Path):
+    _seed(tmp_path)
+    write_audit(tmp_path, AuditEntry(
+        wp_id="WP-0001", timestamp="2026-05-25T14:00:00Z",
+        persona="build-backend-sme", model="claude-sonnet-4-6",
+        tier=2, runtime_seconds=10.0, result="done",
+        tokens_in=1000, tokens_out=500, cost_usd=0.003,
+    ))
+    write_audit(tmp_path, AuditEntry(
+        wp_id="WP-0002", timestamp="2026-05-25T15:00:00Z",
+        persona="build-qa-sme", model="claude-sonnet-4-6",
+        tier=2, runtime_seconds=8.0, result="done",
+        tokens_in=800, tokens_out=300, cost_usd=0.002,
+    ))
+    out = render_dashboard(tmp_path)
+    text = out.read_text(encoding="utf-8")
+    # Total cost = 0.003 + 0.002 = 0.005
+    assert "0.0050" in text
+    # Total tokens_in = 1800
+    assert "1800" in text
+    # Per-persona row
+    assert "build-backend-sme" in text
+    assert "build-qa-sme" in text
+
+
+def test_dashboard_html_includes_cost_burn(tmp_path: Path):
+    _seed(tmp_path)
+    write_audit(tmp_path, AuditEntry(
+        wp_id="WP-0001", timestamp="2026-05-25T14:00:00Z",
+        persona="build-backend-sme", model="claude-sonnet-4-6",
+        tier=2, runtime_seconds=10.0, result="done",
+        tokens_in=500, tokens_out=250, cost_usd=0.001,
+    ))
+    html = render_dashboard_html(tmp_path).read_text(encoding="utf-8")
+    assert "Cost burn" in html
+    assert "0.0010" in html

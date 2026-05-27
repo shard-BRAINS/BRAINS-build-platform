@@ -225,6 +225,17 @@
 {% endfor %}
 {% else %}<p class="none">None.</p>{% endif %}
 
+<h2>Pending decisions (needs you)</h2>
+{% if pending_decisions %}
+{% for p in pending_decisions %}
+<div class="blocker">
+  <strong><code>{{ p.wp_id }}</code></strong> ({{ p.workstream }}) — {{ p.title }}
+  <div>Reason: <em>{{ p.reason }}</em></div>
+  <div><strong>Suggested next step:</strong> {{ p.suggestion }}</div>
+</div>
+{% endfor %}
+{% else %}<p class="none">None.</p>{% endif %}
+
 <h2>Recent decisions (last 7 days)</h2>
 {% if decisions %}
 <ul>{% for d in decisions %}<li><strong>{{ d.date }}:</strong> {{ d.title }} (owner: <code>{{ d.owner }}</code>) → {{ d.related }}</li>{% endfor %}</ul>
@@ -232,7 +243,26 @@
 
 <h2>Up next (this sprint, in priority order)</h2>
 {% if up_next %}
-<ol>{% for wp in up_next %}<li><code>{{ wp.id }}</code> — {{ wp.title }} ({{ wp.workstream }}, tier-{{ wp.tier }})</li>{% endfor %}</ol>
+<ol>{% for wp in up_next %}<li><code>{{ wp.id }}</code> — {{ wp.title }} ({{ wp.workstream }}, tier-{{ wp.tier }} · autonomy: {{ wp.autonomy }})</li>{% endfor %}</ol>
+{% else %}<p class="none">None.</p>{% endif %}
+
+<h2>Cost burn (lifetime)</h2>
+<p>Total: <strong>${{ "%.4f"|format(cost_burn.total_usd) }}</strong> · Tokens in: {{ cost_burn.total_tokens_in }} · Tokens out: {{ cost_burn.total_tokens_out }}</p>
+{% if cost_burn.by_persona %}
+<table>
+  <thead><tr><th>Persona</th><th>Dispatches</th><th>Tokens in</th><th>Tokens out</th><th>Cost (USD)</th></tr></thead>
+  <tbody>
+  {% for p in cost_burn.by_persona %}
+    <tr>
+      <td><code>{{ p.persona }}</code></td>
+      <td>{{ p.dispatches }}</td>
+      <td>{{ p.tokens_in }}</td>
+      <td>{{ p.tokens_out }}</td>
+      <td>${{ "%.4f"|format(p.cost_usd) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
 {% else %}<p class="none">None.</p>{% endif %}
 
 <footer>

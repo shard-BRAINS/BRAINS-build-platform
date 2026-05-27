@@ -49,10 +49,17 @@ What you do:
 What you do:
 - Read the brief.
 - Spawn the named executor persona subagent (e.g., `build-backend-sme`) with the brief path as its primary input.
-- When the subagent returns its Result block, spawn `build-qa-sme` to verify acceptance.
-- If WP is flagged sensitive (auth, data, deps), spawn `build-security-sme` in parallel with QA.
-- If QA verdict = pass and Security ≠ block: mark WP `done` (update state via CLI invocation under the hood); write audit entry; refresh dashboard.
+- When the subagent returns its Result block:
+  1. Spawn `build-code-review-sme` (read-only) to verify architectural fit, style, and codebase consistency. Verdicts: **approve** → continue; **request-changes** → return to executor with the findings; **reject** → mark WP `blocked` with the rejection notes.
+  2. On code-review approve, spawn `build-qa-sme` to verify acceptance criteria.
+  3. If WP is flagged sensitive (auth, data, deps), spawn `build-security-sme` in parallel with QA.
+- If code-review approved, QA verdict = pass, and Security ≠ block: mark WP `done` (update state via CLI invocation); write audit entry; refresh dashboard.
 - If QA fails: mark WP `blocked` with QA findings; refresh dashboard.
+
+### Autonomy modes (`autonomy` field on each WP)
+- `manual` (default) — every step pauses for user confirmation. Safest. Use for unfamiliar work or judgement-heavy tasks.
+- `review-on-complete` — executor runs to completion; user reviews + approves before the next WP. Code-review SME is always run.
+- `auto` (tier-1 only) — fully unattended via `/build-loop`. Code-review SME is run; failures stop the loop and block the WP. Only tier-1 WPs can be `auto` — judgement work always needs a human pass.
 
 ## Always at end
 

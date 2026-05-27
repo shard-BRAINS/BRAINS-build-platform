@@ -159,3 +159,15 @@ def test_edit_writes_audit_entry(tmp_path: Path):
     content = audits[0].read_text(encoding="utf-8")
     assert "Result:** edited" in content
     assert "Renamed" in content
+
+
+def test_package_edit_can_change_autonomy(tmp_path: Path):
+    from build_platform.schemas import Autonomy
+    wp_id = _init_and_make_wp(tmp_path)
+    runner = CliRunner()
+    r = runner.invoke(edit_cmd, [
+        "--root", str(tmp_path), "--wp", wp_id,
+        "--autonomy", "review-on-complete", "--json",
+    ])
+    assert r.exit_code == 0, r.output
+    assert load_wp_state(tmp_path)[wp_id].autonomy == Autonomy.REVIEW_ON_COMPLETE

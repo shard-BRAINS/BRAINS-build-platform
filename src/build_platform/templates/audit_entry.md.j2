@@ -2,6 +2,7 @@
 
 **Persona:** {{ persona }} · **Model:** {{ model }} · **Tier:** {{ tier }}
 **Runtime:** {{ runtime_seconds }}s · **Result:** {{ result }}
+**Tokens:** {{ tokens_in }} in · {{ tokens_out }} out · **Cost:** ${{ "%.4f"|format(cost_usd) }}
 
 ## Inputs read
 {% if inputs_read %}{% for f in inputs_read %}- {{ f }}

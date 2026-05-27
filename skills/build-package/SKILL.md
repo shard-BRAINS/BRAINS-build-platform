@@ -9,8 +9,8 @@ description: Define one or more work packages for a deliverable. Spawns the Dev 
 
 1. **Confirm target.** Which deliverable id are we breaking down?
 2. **Spawn `build-dev-orchestrator`** with: project.yml, deliverables.yml, workstreams.yml, current work-packages.jsonl, target deliverable id.
-3. **Dev Orch proposes WPs** — title, workstream, executor_persona, tier, spec, spec_files, acceptance, depends_on, consult. For each WP, Dev Orch also outputs the exact `python -m build_platform.cli.package` invocation.
-4. **Confirm with user.** Show the proposed list; accept edits.
+3. **Dev Orch proposes WPs** — title, workstream, executor_persona, tier, autonomy, spec, spec_files, acceptance, depends_on, consult. For each WP, Dev Orch also outputs the exact `python -m build_platform.cli.package` invocation.
+4. **Confirm with user.** Show the proposed list including autonomy mode for each WP; accept edits.
 5. **Run each invocation:**
 
 ```powershell
@@ -24,8 +24,19 @@ python -m build_platform.cli.package `
   --spec "<spec text>" `
   --file "src/auth/login.py" `
   --accept "tests pass" --accept "endpoint returns 200" `
+  --autonomy manual `
   --json
 ```
+
+### Autonomy mode
+
+Pass `--autonomy` per WP. Default is `manual` (safest).
+
+- `manual` — every step waits for the user. Default.
+- `review-on-complete` — executor + Code-Review SME run automatically; user approves before next WP.
+- `auto` — `/build-loop` will burn this down unattended. **Tier-1 only.** The CLI rejects `--autonomy auto` on `--tier 2` WPs.
+
+Dev Orch picks the autonomy mode based on user intent. If the user hasn't expressed a preference, default to `manual`. Suggest `auto` only when the user has explicitly opted into unattended execution AND the WP is mechanical (passes tier-1 heuristic).
 
 6. **Refresh dashboard:**
 

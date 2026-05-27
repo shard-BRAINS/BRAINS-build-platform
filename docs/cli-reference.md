@@ -75,11 +75,12 @@ python -m build_platform.cli.package `
 | `--accept` | yes | yes | Acceptance criterion |
 | `--depends-on` | no | yes | WP id this depends on |
 | `--consult` | no | yes | Persona id to consult during dispatch |
+| `--autonomy` | no | — | `manual` (default) / `review-on-complete` / `auto`. `auto` requires `--tier 1` |
 | `--created-by` | no | — | Defaults to `build-dev-orchestrator` |
 
 **Output (success):** `{"ok": true, "wp_id": "WP-NNNN"}`
 
-**Exit codes:** `0` success · `2` tier-1 violation (> 3 files).
+**Exit codes:** `0` success · `2` tier-1 violation (> 3 files) or `autonomy=auto` on a tier-2 WP.
 
 ---
 
@@ -273,6 +274,57 @@ python -m build_platform.cli.dispatch_apply --root . --wp WP-0001 --test-timeout
 - `git apply --check` fails → WP transitioned to `blocked` with the check stderr in the history event. Audit entry result=`check_failed`. Source tree untouched.
 - `git apply` itself fails (rare after a passing --check) → WP transitioned to `blocked`. Audit result=`apply_failed`.
 - Test command fails or times out → WP transitioned to `blocked` (diff stays applied). Audit result=`tests_failed` / `tests_timeout`.
+
+---
+
+## `python -m build_platform.cli.loop`
+
+Burn down the `autonomy=auto` tier-1 queue unattended. Dispatches eligible WPs sequentially, applies each diff, runs tests, transitions state. Stops on the first failure.
+
+```powershell
+python -m build_platform.cli.loop --root . --dry-run --json
+python -m build_platform.cli.loop --root . --limit 5 --json
+```
+
+**Eligibility (all must hold):**
+1. `state == defined`
+2. `autonomy == auto`
+3. `tier == 1`
+4. Every `depends_on` WP is `state == done`
+
+WPs are processed in WP-id order, up to `--limit` items.
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `--limit` | 5 | Maximum WPs to dispatch in one run |
+| `--dry-run` | — | Print the planned queue without dispatching |
+
+**Output (success or partial):**
+```json
+{
+  "dispatched": ["WP-0011", "WP-0012"],
+  "stopped_at": "WP-0013",
+  "reason": "tier-1 dispatch failed: diff validation failed twice",
+  "remaining_eligible": ["WP-0014"]
+}
+```
+
+**Output (dry-run):**
+```json
+{
+  "dry_run": true,
+  "planned": [{"wp_id": "WP-0011", "title": "..."}, ...]
+}
+```
+
+**Exit codes:** `0` loop completed cleanly (zero or more dispatches, no failures) · `1` halted on a dispatch / apply / test failure · `2` precondition error (no eligible WPs is NOT an error — exits 0 with empty `dispatched`).
+
+**Safety:**
+- The CLI authoritatively enforces eligibility. A tier-2 WP marked `auto` (which `package` should have rejected) is still skipped here as a second line of defence.
+- A non-empty `git status --porcelain` triggers a warning. The loop refuses to run on a dirty tree unless `--allow-dirty` is set (escape hatch, off by default).
+- Each step is a separate audit entry — partial runs are fully recoverable.
 
 ---
 

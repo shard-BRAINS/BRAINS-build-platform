@@ -6,6 +6,7 @@ from pathlib import Path
 
 from jinja2 import Template
 
+from build_platform.audit import load_audit_index
 from build_platform.paths import state_dir
 from build_platform.schemas import WPState
 from build_platform.state import (
@@ -120,8 +121,42 @@ def _assemble_context(project_root: Path) -> dict:
     } for wp in wps if wp.state == WPState.BLOCKED]
     decisions: list[dict] = []
     up_next = [{
-        "id": wp.id, "title": wp.title, "workstream": wp.workstream, "tier": int(wp.tier.value),
+        "id": wp.id, "title": wp.title, "workstream": wp.workstream,
+        "tier": int(wp.tier.value), "autonomy": wp.autonomy.value,
     } for wp in sorted(wps, key=lambda w: w.id) if wp.state == WPState.DEFINED][:10]
+
+    pending_decisions = [{
+        "wp_id": wp.id,
+        "workstream": wp.workstream,
+        "title": wp.title,
+        "reason": (wp.history[-1].event if wp.history else "unknown"),
+        "suggestion": "investigate via audit log",
+    } for wp in wps if wp.state == WPState.BLOCKED]
+
+    audit_rows = load_audit_index(project_root)
+    if audit_rows:
+        total_usd = sum(r.get("cost_usd", 0.0) for r in audit_rows)
+        total_in = sum(r.get("tokens_in", 0) for r in audit_rows)
+        total_out = sum(r.get("tokens_out", 0) for r in audit_rows)
+        persona_map: dict[str, dict] = {}
+        for r in audit_rows:
+            p = r.get("persona", "unknown")
+            if p not in persona_map:
+                persona_map[p] = {"persona": p, "dispatches": 0,
+                                  "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
+            persona_map[p]["dispatches"] += 1
+            persona_map[p]["tokens_in"] += r.get("tokens_in", 0)
+            persona_map[p]["tokens_out"] += r.get("tokens_out", 0)
+            persona_map[p]["cost_usd"] += r.get("cost_usd", 0.0)
+        cost_burn = {
+            "total_usd": total_usd,
+            "total_tokens_in": total_in,
+            "total_tokens_out": total_out,
+            "by_persona": sorted(persona_map.values(), key=lambda x: x["persona"]),
+        }
+    else:
+        cost_burn = {"total_usd": 0.0, "total_tokens_in": 0, "total_tokens_out": 0,
+                     "by_persona": []}
 
     return dict(
         project=project,
@@ -144,6 +179,8 @@ def _assemble_context(project_root: Path) -> dict:
         blockers=blockers,
         decisions=decisions,
         up_next=up_next,
+        pending_decisions=pending_decisions,
+        cost_burn=cost_burn,
     )
 
 

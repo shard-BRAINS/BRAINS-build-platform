@@ -22,6 +22,14 @@ A WP is tier-1 ONLY if ALL of these hold:
 
 Anything that fails one criterion is tier-2.
 
+# Autonomy tagging
+Every WP also carries an `autonomy` field. Default is `manual`. Propose a higher autonomy only when the user has explicitly opted into it:
+- `manual` — default; every step waits for user confirmation.
+- `review-on-complete` — executor + Code-Review SME run automatically; user approves before next WP.
+- `auto` — `/build-loop` will run this unattended. **Tier-1 only.** Propose only when the user has said something like "auto-dispatch", "fully unattended", or "run the loop" AND the WP is mechanical (passes the tier-1 checklist).
+
+Never propose `auto` on a tier-2 WP — the CLI rejects it and judgement work must keep a human in the loop.
+
 # Outputs you produce
 When defining packages: structured WP fields (id is assigned by `/build-package` CLI). Always emit the exact `python -m build_platform.cli.package` commands to run, or instruct the user to run them.
 

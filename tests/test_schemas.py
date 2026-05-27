@@ -3,6 +3,7 @@ import pytest
 from pydantic import ValidationError
 
 from build_platform.schemas import (
+    Autonomy,
     Config,
     Deliverable,
     OllamaConfig,
@@ -99,3 +100,41 @@ def test_workstream_minimal():
         description="Server-side code",
     )
     assert ws.id == "backend"
+
+
+# --- Autonomy field tests ---
+
+_WP_BASE = dict(
+    id="WP-0001", title="t", workstream="backend", deliverable_id="D-x",
+    tier=WPTier.ONE, executor_persona="build-backend-sme", spec="s",
+    spec_files=["f.py"], acceptance=["a"], depends_on=[], consult=[],
+    state=WPState.DEFINED, created_by="build-dev-orchestrator",
+    created_at="2026-05-25T10:00:00Z", history=[],
+)
+
+
+def test_work_package_autonomy_defaults_to_manual():
+    wp = WorkPackage(**_WP_BASE)
+    assert wp.autonomy == Autonomy.MANUAL
+
+
+def test_work_package_autonomy_accepts_three_values():
+    for val in ("manual", "review-on-complete", "auto"):
+        wp = WorkPackage(**{**_WP_BASE, "autonomy": val})
+        assert wp.autonomy.value == val
+
+
+def test_work_package_autonomy_rejects_unknown():
+    with pytest.raises(ValidationError):
+        WorkPackage(**{**_WP_BASE, "autonomy": "fully-automated-never"})
+
+
+def test_work_package_backward_compat_loads_jsonl_without_autonomy():
+    import json
+    line = json.dumps({k: v for k, v in {
+        **_WP_BASE,
+        "tier": 1,
+        "state": "defined",
+    }.items()})
+    wp = WorkPackage.model_validate_json(line)
+    assert wp.autonomy == Autonomy.MANUAL

@@ -19,7 +19,7 @@ import click
 from build_platform.audit import AuditEntry, write_audit
 from build_platform.paths import find_brains_build_root
 from build_platform.render_dashboard import render_dashboard
-from build_platform.schemas import WPTier
+from build_platform.schemas import Autonomy, WPTier
 from build_platform.state import (
     load_work_packages,
     load_wp_state,
@@ -62,6 +62,8 @@ def _set_list(current: list[str], add: tuple[str, ...], remove: tuple[str, ...])
 @click.option("--remove-dep", "remove_deps", multiple=True)
 @click.option("--add-consult", "add_consult_personas", multiple=True)
 @click.option("--remove-consult", "remove_consult_personas", multiple=True)
+@click.option("--autonomy", type=click.Choice(["manual", "review-on-complete", "auto"]),
+              default=None, help="Change the autonomy level.")
 @click.option("--by", default="user", help="Who's making the edit. Recorded in history.")
 @click.option("--json", "as_json", is_flag=True)
 def edit_cmd(root, wp_id, title, workstream, deliverable_id, tier,
@@ -70,7 +72,7 @@ def edit_cmd(root, wp_id, title, workstream, deliverable_id, tier,
              add_acceptance, remove_acceptance,
              add_deps, remove_deps,
              add_consult_personas, remove_consult_personas,
-             by, as_json):
+             autonomy, by, as_json):
     """Edit fields on an existing WP. Mutates the JSONL line; appends a history event."""
     root_path = Path(root).resolve() if root else find_brains_build_root()
     wps_state = load_wp_state(root_path)
@@ -127,6 +129,12 @@ def edit_cmd(root, wp_id, title, workstream, deliverable_id, tier,
         if new_consult != wp.consult:
             updates["consult"] = new_consult
             diffs.append(f"consult: {wp.consult} -> {new_consult}")
+
+    if autonomy is not None:
+        new_autonomy = Autonomy(autonomy)
+        if new_autonomy != wp.autonomy:
+            updates["autonomy"] = new_autonomy
+            diffs.append(f"autonomy: {wp.autonomy.value} -> {new_autonomy.value}")
 
     # Validate tier-1 constraint AFTER all updates merged into current view.
     final_tier = updates.get("tier", wp.tier)

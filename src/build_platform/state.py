@@ -156,7 +156,7 @@ def load_wp_state(project_root: Path) -> dict[str, WorkPackage]:
 # state, history — those have their own transition paths.
 _EDITABLE_FIELDS = {
     "title", "workstream", "deliverable_id", "tier", "executor_persona",
-    "spec", "spec_files", "acceptance", "depends_on", "consult",
+    "spec", "spec_files", "acceptance", "depends_on", "consult", "autonomy",
 }
 
 

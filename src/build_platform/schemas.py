@@ -5,6 +5,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class Autonomy(str, Enum):
+    MANUAL = "manual"
+    REVIEW_ON_COMPLETE = "review-on-complete"
+    AUTO = "auto"
+
+
 class WPState(str, Enum):
     DEFINED = "defined"
     DISPATCHED = "dispatched"
@@ -45,6 +51,7 @@ class WorkPackage(BaseModel):
     depends_on: list[str] = Field(default_factory=list)
     consult: list[str] = Field(default_factory=list)
     state: WPState
+    autonomy: Autonomy = Autonomy.MANUAL
     created_by: str
     created_at: str  # ISO-8601
     history: list[WPHistoryEvent] = Field(default_factory=list)

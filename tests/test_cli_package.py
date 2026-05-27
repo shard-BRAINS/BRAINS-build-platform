@@ -83,3 +83,51 @@ def test_package_tier1_rejects_more_than_three_files(tmp_path: Path):
     ])
     assert r.exit_code == 2
     assert "<= 3 files" in r.output
+
+
+# --- Autonomy flag tests ---
+
+def test_package_default_autonomy_is_manual(tmp_path: Path):
+    from build_platform.schemas import Autonomy
+    from build_platform.state import load_work_packages
+    _init(tmp_path)
+    r = _make(tmp_path, "Test WP")
+    assert r["exit"] == 0
+    wps = load_work_packages(tmp_path)
+    assert wps[-1].autonomy == Autonomy.MANUAL
+
+
+def test_package_accepts_autonomy_auto_for_tier1(tmp_path: Path):
+    _init(tmp_path)
+    runner = CliRunner()
+    r = runner.invoke(package_cmd, [
+        "--root", str(tmp_path),
+        "--title", "Auto T1", "--workstream", "backend", "--deliverable", "D-a",
+        "--tier", "1", "--executor", "build-backend-sme",
+        "--spec", "do thing", "--file", "src/x.py",
+        "--accept", "tests pass",
+        "--autonomy", "auto",
+        "--json",
+    ])
+    assert r.exit_code == 0, r.output
+    from build_platform.schemas import Autonomy
+    from build_platform.state import load_work_packages
+    wps = load_work_packages(tmp_path)
+    assert wps[-1].autonomy == Autonomy.AUTO
+
+
+def test_package_rejects_autonomy_auto_for_tier2(tmp_path: Path):
+    _init(tmp_path)
+    r = _make(tmp_path, "Auto T2", "--autonomy", "auto")
+    assert r["exit"] == 2
+    assert "tier-1" in r["output"].lower() or "auto" in r["output"].lower()
+
+
+def test_package_accepts_autonomy_review_on_complete(tmp_path: Path):
+    _init(tmp_path)
+    r = _make(tmp_path, "Review WP", "--autonomy", "review-on-complete")
+    assert r["exit"] == 0
+    from build_platform.schemas import Autonomy
+    from build_platform.state import load_work_packages
+    wps = load_work_packages(tmp_path)
+    assert wps[-1].autonomy == Autonomy.REVIEW_ON_COMPLETE

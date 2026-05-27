@@ -7,3 +7,5 @@ dist/
 build/
 .brains-build/
 .ruff_cache/
+.claude/
+Backog_Items_MG.md

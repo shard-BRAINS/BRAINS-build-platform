@@ -45,7 +45,7 @@ flowchart TD
     subgraph SKILLS["Claude Skills (~/.claude/skills/)"]
       direction LR
       MS["<b>build-platform</b><br/>master router"]:::skill
-      VS["<b>7 verb skills</b><br/>init · package · dispatch<br/>scrum · status · decision · dashboard"]:::skill
+      VS["<b>11 verb skills</b><br/>init · package · dispatch · loop · scrum<br/>status · decision · dashboard · persona · portfolio · mirror"]:::skill
     end
 
     subgraph AGENTS["Subagents (~/.claude/agents/build/)"]
@@ -90,7 +90,7 @@ Three tiers, one rule per tier:
 
 ## The team
 
-Eight personas, all spawned as Claude subagents from `~/.claude/agents/build/`.
+Nine personas, all spawned as Claude subagents from `~/.claude/agents/build/`.
 
 | Persona | Tier | Owns |
 |---|---|---|
@@ -99,6 +99,7 @@ Eight personas, all spawned as Claude subagents from `~/.claude/agents/build/`.
 | ![Product](https://img.shields.io/badge/-Product%20Owner-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Project context, deliverable definitions, acceptance criteria, scope guard |
 | ![Frontend](https://img.shields.io/badge/-Frontend%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | UI components, styles, frontend tests, accessibility |
 | ![Backend](https://img.shields.io/badge/-Backend%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Services, APIs, data layer, backend tests |
+| ![Code Review](https://img.shields.io/badge/-Code%20Review%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Read-only review: architectural fit, style, codebase consistency before QA |
 | ![QA](https://img.shields.io/badge/-QA%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Acceptance verification, integration/E2E tests, regression matrices, bug repro |
 | ![Security](https://img.shields.io/badge/-Security%20SME-2A8B91?style=flat-square&labelColor=0A0A0A) | Sonnet | Read-only audit: secret scan, dep audit, OWASP review, threat surface |
 | ![DevOps](https://img.shields.io/badge/-DevOps%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | CI/CD config, build scripts, deploy manifests, environment management |
@@ -128,6 +129,40 @@ Everything else. `/build-dispatch` writes a structured brief to `.brains-build/r
 
 ---
 
+## Autonomy modes — how much the platform decides on its own
+
+Every work package carries an `autonomy` field that tells the platform how much human oversight you want for it. **You set it explicitly at packaging time; the default is the safest mode.** Choose per WP — a project can mix modes freely.
+
+| Mode | What happens | What the platform can do without you | When to use |
+|---|---|---|---|
+| `manual` *(default)* | Every step pauses for your confirmation. Diffs need approval; QA verdicts need approval; state transitions need approval. | Read state. Propose. Show. Nothing applied without you. | Unfamiliar codebase. Judgement-heavy work. First time using the platform on a project. |
+| `review-on-complete` | Executor runs to completion; the Code-Review SME runs automatically; then you review + approve before the next WP. | Read state. Edit code. Run tests. Run code-review. Stop at the gate and wait for you. | You trust the executor on this kind of work but still want a human signoff before merge. |
+| `auto` *(tier-1 only)* | The `/build-loop` verb auto-dispatches the WP unattended. Diff is validated, applied, tests are run, Code-Review SME is invoked. Any failure → WP blocked, loop stops. | Read state. Edit code. Apply diffs. Run tests. Transition state. Refresh dashboard. **No code is pushed to a remote** unless the GitHub mirror is separately enabled. | Mechanical work you've explicitly pre-authorised: rename sweeps, doc edits, formatter runs, dependency bumps below your watermark. |
+
+**Hard constraints (enforced by the CLI, not advisory):**
+
+1. `auto` requires `tier == 1`. Judgement work (`tier-2`) cannot be auto-dispatched — it always spawns a Claude SME and waits for your review.
+2. `auto` requires every `depends_on` WP to be `done`. Unmet deps make the WP ineligible for the loop.
+3. The loop **stops on the first failure**. It does not retry, route around, or "fix" the failing WP. The WP is left `blocked` for you.
+4. Code-Review SME runs on every `review-on-complete` and `auto` WP. You cannot opt out per WP — opt out by choosing `manual`.
+5. The autonomy field controls **local** action. Remote actions (push to GitHub, open PRs) live behind the separate `/build-mirror` verb and the `github.enabled` config flag — they never fire from autonomy alone.
+
+### Access implications — what you're authorising the agent to do
+
+| Mode | Local file edits | Run shell tests | Git apply | Git push | Open PRs | Read secrets |
+|---|---|---|---|---|---|---|
+| `manual` | with your approval | with your approval | with your approval | no | no | no |
+| `review-on-complete` | yes | yes | yes | no | no | no |
+| `auto` | yes | yes | yes | no | no | no |
+
+The platform never pushes to a remote, opens a PR, posts to GitHub, sends email, or reads secrets out of the box. Those capabilities only activate when you turn on the optional `/build-mirror` integration with an explicit owner + repo, and even then the mirror is one-way write (issues + milestones) — it does not run code on your behalf.
+
+### Cost visibility
+
+Every dispatch writes its tokens-in, tokens-out, and dollar cost into `.brains-build/audit/index.jsonl`. The dashboard's **Cost burn** panel rolls this up per persona and lifetime total. You can cap a session by setting `--limit` on `/build-loop` or by mixing autonomy modes (e.g., 3 mechanical WPs `auto`, the architectural one `manual`).
+
+---
+
 ## Install
 
 ```powershell
@@ -141,7 +176,7 @@ ollama pull qwen2.5-coder:7b
 ollama pull llama3.2:3b
 ```
 
-The installer copies the 8 skills to `~/.claude/skills/` and the 8 subagent definitions to `~/.claude/agents/build/`, then editable-installs the Python package.
+The installer copies the 13 skills to `~/.claude/skills/` and the 9 subagent definitions to `~/.claude/agents/build/`, then editable-installs the Python package.
 
 ---
 
@@ -158,10 +193,11 @@ cd c:\path\to\new-project
 
 | Step | Verb | What happens |
 |---|---|---|
-| 1 | `/build-package` | Dev Orchestrator decomposes a deliverable into work packages, tagged tier-1 or tier-2 |
-| 2 | `/build-dispatch` | Tier-1 runs through Ollama; tier-2 spawns the named SME subagent |
-| 3 | `/build-scrum` | PMO Lead writes the weekly recap, refreshes the dashboard, surfaces blockers |
-| 4 | `/build-dashboard` | Render the current view at `.brains-build/dashboards/current.md` |
+| 1 | `/build-package` | Dev Orchestrator decomposes a deliverable into work packages, tagged tier-1 or tier-2 and assigned an autonomy mode (`manual` default, `review-on-complete`, or `auto`) |
+| 2 | `/build-dispatch` | Tier-1 runs through Ollama; tier-2 spawns the named SME subagent. Code-Review SME runs on tier-2 before QA. |
+| 3 | `/build-loop` *(optional)* | Burns down the `autonomy=auto` tier-1 queue unattended; stops on first failure |
+| 4 | `/build-scrum` | PMO Lead writes the weekly recap, refreshes the dashboard, surfaces blockers |
+| 5 | `/build-dashboard` | Render the current view at `.brains-build/dashboards/current.md` — includes autonomy column, pending-decisions inbox, cost burn |
 
 Decisions are logged through `/build-decision`. Read-only queries through `/build-status`. For automatic weekly cadence, `/build-schedule-scrum` registers a remote routine via the `schedule` skill that pushes a notification to remind you when scrum is due.
 
@@ -180,8 +216,8 @@ BRAINS-build-platform/
 │   ├── render_dashboard.py      # Deterministic markdown renderer
 │   ├── cli/                     # 7 CLI verbs (init, package, dispatch, ...)
 │   └── templates/               # Jinja templates for prompts, dashboards, audits
-├── skills/build-*/SKILL.md      # 8 Claude skills (1 router + 7 verbs)
-├── agents/build-*.md            # 8 subagent definitions
+├── skills/build-*/SKILL.md      # 13 Claude skills (1 router + 12 verbs)
+├── agents/build-*.md            # 9 subagent definitions
 ├── tests/                       # pytest suite (49 tests, 100% pass)
 ├── docs/superpowers/            # design spec + implementation plan
 ├── install.ps1                  # Installer (Windows / PowerShell)
