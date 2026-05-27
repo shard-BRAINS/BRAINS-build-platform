@@ -22,7 +22,14 @@ def _init_project(tmp_path: Path):
     (tmp_path / "src" / "foo.py").write_text('def hello(): return "old"\n', encoding="utf-8")
 
 
-def test_dispatch_tier2_emits_brief(tmp_path: Path):
+def test_dispatch_tier2_emits_brief(tmp_path: Path, monkeypatch):
+    # Make the persona-install check find the file so no warning is emitted.
+    fake_home = tmp_path / "home"
+    agents = fake_home / ".claude" / "agents" / "build"
+    agents.mkdir(parents=True)
+    (agents / "build-backend-sme.md").write_text("stub", encoding="utf-8")
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
     _init_project(tmp_path)
     runner = CliRunner()
     runner.invoke(package_cmd, [
@@ -36,7 +43,32 @@ def test_dispatch_tier2_emits_brief(tmp_path: Path):
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["tier"] == 2
+    assert payload["warnings"] == []  # persona installed -> no warning
     assert Path(payload["brief"]).exists()
+
+
+def test_dispatch_tier2_warns_when_persona_not_installed(tmp_path: Path, monkeypatch):
+    """Finding #9: tier-2 dispatch surfaces a warning when the persona's
+    subagent file isn't installed at ~/.claude/agents/build/."""
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()  # but DON'T create the persona file
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
+    _init_project(tmp_path)
+    runner = CliRunner()
+    runner.invoke(package_cmd, [
+        "--root", str(tmp_path),
+        "--title", "WP", "--workstream", "backend", "--deliverable", "D-a",
+        "--tier", "2", "--executor", "build-backend-sme",
+        "--spec", "x", "--file", "src/foo.py",
+        "--accept", "tests pass", "--json",
+    ])
+    result = runner.invoke(dispatch_cmd, ["--root", str(tmp_path), "--wp", "WP-0001", "--json"])
+    assert result.exit_code == 0, result.output  # warning, not fatal
+    payload = json.loads(result.output)
+    assert len(payload["warnings"]) == 1
+    assert "build-backend-sme.md" in payload["warnings"][0]
+    assert "install.ps1" in payload["warnings"][0]
 
 
 def test_dispatch_tier1_calls_ollama(tmp_path: Path):

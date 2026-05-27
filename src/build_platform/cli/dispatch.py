@@ -66,9 +66,25 @@ def dispatch_cmd(root, wp_id, as_json):
             notes="Diff awaiting Dev Orchestrator review.",
         ))
         result_payload = {"ok": True, "wp_id": wp.id, "tier": 1,
-                          "diff": str(diff_path), "next": "review and apply"}
+                          "diff": str(diff_path), "warnings": [],
+                          "next": "review and apply"}
     else:
         brief_path = prepare_tier2_brief(root_path, wp)
+
+        # Finding #9: tier-2 dispatch requires the persona's subagent
+        # definition to be installed at ~/.claude/agents/build/<persona>.md
+        # for Claude Code to spawn it. Don't refuse — emit a warning so
+        # the caller knows to run install.ps1 (or the user can read the
+        # brief and spawn manually elsewhere).
+        warnings = []
+        persona_path = Path.home() / ".claude" / "agents" / "build" / f"{wp.executor_persona}.md"
+        if not persona_path.exists():
+            warnings.append(
+                f"Persona subagent file missing at {persona_path}. "
+                f"Claude Code cannot spawn {wp.executor_persona} until this exists. "
+                f"Run `.\\install.ps1` from the build-platform repo to install."
+            )
+
         update_wp_state(root_path, wp_id, WPState.DISPATCHED,
                         by="build-dev-orchestrator",
                         event=f"tier-2 brief at {brief_path.relative_to(root_path)}")
@@ -78,10 +94,12 @@ def dispatch_cmd(root, wp_id, as_json):
             tier=2, runtime_seconds=time.monotonic() - start, result="brief_emitted",
             inputs_read=wp.spec_files,
             outputs_written=[str(brief_path.relative_to(root_path))],
-            notes="Awaiting subagent execution in Claude session.",
+            notes="Awaiting subagent execution in Claude session." +
+                  (f" WARNING: {warnings[0]}" if warnings else ""),
         ))
         result_payload = {"ok": True, "wp_id": wp.id, "tier": 2,
                           "brief": str(brief_path),
+                          "warnings": warnings,
                           "next": f"Spawn {wp.executor_persona} subagent with this brief"}
 
     render_dashboard(root_path)
@@ -94,10 +112,13 @@ def _err(msg: str, as_json: bool, code: int):
 
 
 def _human(payload: dict) -> str:
+    warnings = payload.get("warnings") or []
+    warn_lines = "".join(f"\n  WARNING: {w}" for w in warnings)
     if payload["tier"] == 1:
-        return f"{payload['wp_id']} dispatched (tier-1). Diff: {payload['diff']}\nNext: review and apply."
+        return (f"{payload['wp_id']} dispatched (tier-1). Diff: {payload['diff']}\n"
+                f"Next: review and apply.{warn_lines}")
     return (f"{payload['wp_id']} dispatched (tier-2). Brief: {payload['brief']}\n"
-            f"Next: {payload['next']}")
+            f"Next: {payload['next']}{warn_lines}")
 
 
 if __name__ == "__main__":
