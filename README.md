@@ -12,7 +12,7 @@
 <br />
 
 [![Status](https://img.shields.io/badge/status-v0.1.0%20MVP-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/BRAINS-build-platform/releases/tag/v0.1.0)
-[![Tests](https://img.shields.io/badge/tests-49%2F49%20passing-2A8B91?style=for-the-badge&labelColor=0A0A0A)](#run-the-tests)
+[![Tests](https://img.shields.io/badge/tests-231%2F231%20passing-2A8B91?style=for-the-badge&labelColor=0A0A0A)](#run-the-tests)
 [![Python](https://img.shields.io/badge/python-3.11%2B-D99518?style=for-the-badge&logo=python&logoColor=FFFFFF&labelColor=0A0A0A)](#install)
 [![Licence](https://img.shields.io/badge/licence-Apache%202.0-0A0A0A?style=for-the-badge&labelColor=D99518)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=FFFFFF&labelColor=0A0A0A)](https://discord.gg/BEmTXXscBr)
@@ -45,7 +45,7 @@ flowchart TD
     subgraph SKILLS["Claude Skills (~/.claude/skills/)"]
       direction LR
       MS["<b>build-platform</b><br/>master router"]:::skill
-      VS["<b>11 verb skills</b><br/>init · package · dispatch · loop · scrum<br/>status · decision · dashboard · persona · portfolio · mirror"]:::skill
+      VS["<b>12 verb skills</b><br/>init · package · dispatch · loop · scrum · schedule-scrum<br/>status · decision · dashboard · persona · portfolio · mirror"]:::skill
     end
 
     subgraph AGENTS["Subagents (~/.claude/agents/build/)"]
@@ -122,6 +122,22 @@ A work package is tier-1 only if **all four** hold:
 ### Tier-2 — judgement work, Claude SMEs
 
 Everything else. `/build-dispatch` writes a structured brief to `.brains-build/runs/<wp-id>/tier2-brief.md`, then spawns the named executor SME subagent. The SME reads the brief, edits code, runs tests, and produces a result block. The **Code Review SME** then runs a read-only architectural / style pass; QA verifies acceptance; Security runs in parallel on sensitive WPs (auth, data, dependencies).
+
+### The code-review gate
+
+After tier-2 (and on tier-1 in `review-on-complete` / `auto` mode) the Code-Review SME returns a verdict. `dispatch_apply` records it in the audit entry; the loop respects it:
+
+| Verdict | What happens | Exit code |
+|---|---|---|
+| `approve` | Apply continues normally; verdict + findings stored in the audit entry | `0` |
+| `request-changes` | `dispatch_apply` skips the apply step and hands off to `dispatch_request_changes`: findings are written to `runs/<wp>/code-review.md`, the proposed diff is reset, the WP returns to `defined` for re-dispatch | `6` |
+| `reject` | The apply step is skipped, the working tree is untouched, the WP is transitioned to `blocked`, and `/build-loop` will refuse to re-queue it until a later `approve` overrides the reject | `5` |
+
+The verdict travels through the audit trail: `.brains-build/audit/<wp-id>-<ts>.md` for humans, and an append-only `.brains-build/audit/index.jsonl` for the loop's reject-gate and the dashboard's cost panel. Latest-by-timestamp wins, so a later `approve` legitimately overrides an earlier `reject` without manual file edits.
+
+### Re-tiering on the way out of blocked
+
+If a tier-1 dispatch fails twice (Ollama exhausted its retries), `/build-dispatch reject --retier` transitions the WP back to `defined` instead of leaving it `blocked`, ready for re-packaging via `/build-package` as tier-2. The audit captures the re-tier as a deliberate decision, not a stuck state.
 
 ### The weekly scrum
 
@@ -214,11 +230,15 @@ BRAINS-build-platform/
 │   ├── digest.py                # Token-saving pre-digest helper
 │   ├── dispatcher.py            # Tier-1 (Ollama) + tier-2 (brief) paths
 │   ├── render_dashboard.py      # Deterministic markdown renderer
-│   ├── cli/                     # 7 CLI verbs (init, package, dispatch, ...)
+│   ├── cli/                     # CLI verbs (init, package, package_edit, dispatch,
+│   │                            #   dispatch_apply, dispatch_reject,
+│   │                            #   dispatch_request_changes, loop, scrum,
+│   │                            #   schedule_scrum, status, decision, dashboard,
+│   │                            #   persona, portfolio, mirror, triage)
 │   └── templates/               # Jinja templates for prompts, dashboards, audits
 ├── skills/build-*/SKILL.md      # 13 Claude skills (1 router + 12 verbs)
 ├── agents/build-*.md            # 9 subagent definitions
-├── tests/                       # pytest suite (49 tests, 100% pass)
+├── tests/                       # pytest suite (231 tests, 100% pass)
 ├── docs/superpowers/            # design spec + implementation plan
 ├── install.ps1                  # Installer (Windows / PowerShell)
 └── pyproject.toml
@@ -235,10 +255,10 @@ Per-project state lives in `.brains-build/` inside the project you're building, 
 ```
 
 ```
-49 passed in ~2 seconds
+231 passed in ~9 seconds
 ```
 
-Includes a full end-to-end smoke test that exercises `/build-init` → 3 WPs (1 tier-1, 2 tier-2) → 3 dispatches → scrum → dashboard render with Ollama mocked. See `tests/test_end_to_end.py`.
+Includes an end-to-end smoke test that exercises `/build-init` → 3 WPs (1 tier-1, 2 tier-2) → 3 dispatches → scrum → dashboard render with Ollama mocked (see `tests/test_end_to_end.py`), plus a code-review-gate integration test that walks dispatch → approve / request-changes / reject across the audit trail and loop filter (see `tests/test_code_review_gate_integration.py`).
 
 ---
 
