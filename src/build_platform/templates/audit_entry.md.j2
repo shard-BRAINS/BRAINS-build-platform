@@ -22,3 +22,10 @@
 {% endif %}
 ## Notes
 {{ notes or "_None_" }}
+{% if code_review_verdict %}
+## Code Review
+**Verdict:** {{ code_review_verdict }}
+{% if code_review_findings %}
+### Findings
+{% for finding in code_review_findings %}- {{ finding }}
+{% endfor %}{% endif %}{% endif %}

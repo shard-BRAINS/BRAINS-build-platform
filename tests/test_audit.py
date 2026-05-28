@@ -102,3 +102,52 @@ def test_load_audit_index_round_trips_two_entries(tmp_path: Path):
     assert len(rows) == 2
     assert rows[0]["wp_id"] == "WP-0001"
     assert rows[1]["wp_id"] == "WP-0002"
+
+
+# --- Code review fields tests (WP-0007) ---
+
+def test_audit_entry_code_review_defaults_to_none():
+    e = _make_entry()
+    assert e.code_review_verdict is None
+    assert e.code_review_findings == []
+
+
+def test_audit_entry_code_review_round_trips():
+    e = _make_entry(code_review_verdict="approve", code_review_findings=["ok"])
+    dumped = e.model_dump()
+    assert dumped["code_review_verdict"] == "approve"
+    assert dumped["code_review_findings"] == ["ok"]
+    e2 = AuditEntry.model_validate(dumped)
+    assert e2.code_review_verdict == "approve"
+    assert e2.code_review_findings == ["ok"]
+
+
+def test_write_audit_renders_code_review_section_when_verdict_set(tmp_path: Path):
+    init_state_tree(tmp_path)
+    e = _make_entry(code_review_verdict="request-changes", code_review_findings=["missing docstring"])
+    path = write_audit(tmp_path, e)
+    content = path.read_text(encoding="utf-8")
+    assert "## Code Review" in content
+    assert "request-changes" in content
+    assert "missing docstring" in content
+
+
+def test_write_audit_omits_code_review_section_when_verdict_none(tmp_path: Path):
+    init_state_tree(tmp_path)
+    e = _make_entry()
+    path = write_audit(tmp_path, e)
+    content = path.read_text(encoding="utf-8")
+    assert "## Code Review" not in content
+
+
+def test_audit_index_jsonl_contains_code_review_keys(tmp_path: Path):
+    init_state_tree(tmp_path)
+    e = _make_entry(code_review_verdict="approve", code_review_findings=["lgtm"])
+    write_audit(tmp_path, e)
+    rows = load_audit_index(tmp_path)
+    assert len(rows) == 1
+    rec = rows[0]
+    assert "code_review_verdict" in rec
+    assert "code_review_findings" in rec
+    assert rec["code_review_verdict"] == "approve"
+    assert rec["code_review_findings"] == ["lgtm"]

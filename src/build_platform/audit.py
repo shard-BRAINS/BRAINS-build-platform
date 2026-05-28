@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 from importlib.resources import files
+from typing import Literal
 
 from jinja2 import Template
 from pydantic import BaseModel, Field
@@ -22,6 +23,8 @@ class AuditEntry(BaseModel):
     decisions_logged: list[str] = Field(default_factory=list)
     tests_run: list[tuple[str, str]] = Field(default_factory=list)
     notes: str = ""
+    code_review_verdict: Literal["approve", "request-changes", "reject"] | None = None
+    code_review_findings: list[str] = Field(default_factory=list)
     tokens_in: int = 0
     tokens_out: int = 0
     cost_usd: float = 0.0

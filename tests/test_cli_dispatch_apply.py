@@ -9,6 +9,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
+from build_platform.audit import load_audit_index
 from build_platform.cli.dispatch_apply import apply_cmd
 from build_platform.cli.init import init_cmd
 from build_platform.cli.package import package_cmd
@@ -183,3 +184,143 @@ def test_apply_passing_tests_succeeds(tmp_path: Path):
     assert payload["tests"] == "passed"
     wps = load_wp_state(tmp_path)
     assert wps["WP-0001"].state == WPState.IN_REVIEW
+
+
+# ---------------------------------------------------------------------------
+# Code-review verdict tests (WP-0008)
+# ---------------------------------------------------------------------------
+
+def test_apply_with_code_review_verdict_approve_records_verdict_in_audit_index(tmp_path: Path):
+    """verdict='approve' goes through normal apply; audit/index.jsonl has both fields."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test",
+        "--code-review-verdict", "approve",
+        "--json",
+    ])
+    assert r.exit_code == 0, r.output
+    wps = load_wp_state(tmp_path)
+    assert wps["WP-0001"].state == WPState.IN_REVIEW
+
+    rows = load_audit_index(tmp_path)
+    assert rows, "audit index should have at least one entry"
+    row = rows[-1]
+    assert row["code_review_verdict"] == "approve"
+    assert row["code_review_findings"] == []
+
+
+def test_apply_with_code_review_verdict_reject_blocks_wp_and_does_not_apply(tmp_path: Path):
+    """verdict='reject' with a 2-line findings file: WP blocked, diff NOT applied, exit 5."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+
+    findings_file = tmp_path / "findings.txt"
+    findings_file.write_text("Finding one\nFinding two\n", encoding="utf-8")
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test",
+        "--code-review-verdict", "reject",
+        "--code-review-findings-file", str(findings_file),
+        "--json",
+    ])
+    assert r.exit_code == 5, r.output
+
+    # WP transitioned to blocked
+    wps = load_wp_state(tmp_path)
+    assert wps["WP-0001"].state == WPState.BLOCKED
+
+    # Diff was NOT applied — source file still contains original content
+    assert (tmp_path / "src" / "foo.py").read_text(encoding="utf-8").strip() == \
+        'def hello(): return "old"', "diff must not be applied on reject"
+
+    # Audit entry written with correct fields
+    rows = load_audit_index(tmp_path)
+    assert rows, "audit index should have at least one entry"
+    row = rows[-1]
+    assert row["result"] == "rejected_by_code_review"
+    assert row["code_review_verdict"] == "reject"
+    assert row["code_review_findings"] == ["Finding one", "Finding two"]
+
+
+def test_apply_with_findings_file_populates_findings_list_in_audit(tmp_path: Path):
+    """3-line findings file → audit row has code_review_findings of length 3."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+
+    findings_file = tmp_path / "findings.txt"
+    findings_file.write_text("Alpha\nBeta\nGamma\n", encoding="utf-8")
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test",
+        "--code-review-verdict", "approve",
+        "--code-review-findings-file", str(findings_file),
+        "--json",
+    ])
+    assert r.exit_code == 0, r.output
+
+    rows = load_audit_index(tmp_path)
+    row = rows[-1]
+    assert len(row["code_review_findings"]) == 3
+
+
+def test_apply_without_code_review_flags_preserves_existing_behavior(tmp_path: Path):
+    """No code-review flags → identical to today's behavior."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test", "--json",
+    ])
+    assert r.exit_code == 0, r.output
+    payload = json.loads(r.output)
+    assert payload["tests"] == "skipped"
+    wps = load_wp_state(tmp_path)
+    assert wps["WP-0001"].state == WPState.IN_REVIEW
+
+    rows = load_audit_index(tmp_path)
+    row = rows[-1]
+    assert row["code_review_verdict"] is None
+    assert row["code_review_findings"] == []
+
+
+def test_apply_with_request_changes_delegates_to_dispatch_request_changes(tmp_path: Path):
+    """verdict='request-changes' with a 2-line findings file: WP back to defined, exit 6,
+    JSON has findings_count=2, code-review.md written."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+
+    findings_file = tmp_path / "findings.txt"
+    findings_file.write_text("Finding alpha\nFinding beta\n", encoding="utf-8")
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001",
+        "--code-review-verdict", "request-changes",
+        "--code-review-findings-file", str(findings_file),
+        "--json",
+    ])
+    assert r.exit_code == 6, r.output
+
+    # JSON payload emitted on stdout
+    payload = json.loads(r.output)
+    assert payload["findings_count"] == 2
+
+    # WP returned to defined
+    wps = load_wp_state(tmp_path)
+    assert wps["WP-0001"].state == WPState.DEFINED
+
+    # code-review.md written with findings file contents
+    code_review_md = state_dir(tmp_path) / "runs" / "WP-0001" / "code-review.md"
+    assert code_review_md.exists()
+    assert "Finding alpha" in code_review_md.read_text(encoding="utf-8")

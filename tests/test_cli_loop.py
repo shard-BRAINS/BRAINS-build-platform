@@ -6,8 +6,9 @@ from unittest.mock import patch
 from click.testing import CliRunner
 
 from build_platform.cli.init import init_cmd
-from build_platform.cli.loop import loop_cmd
+from build_platform.cli.loop import _wps_blocked_by_code_review, loop_cmd
 from build_platform.cli.package import package_cmd
+from build_platform.paths import state_dir
 from build_platform.schemas import Autonomy, WPState, WPTier, WorkPackage
 from build_platform.state import (
     append_work_package,
@@ -112,6 +113,60 @@ def test_loop_skips_tier2_wps_even_if_marked_auto(tmp_path: Path):
     payload = json.loads(r.output)
     assert len(payload["queue"]) == 0
 
+
+# ---------------------------------------------------------------------------
+# _wps_blocked_by_code_review unit tests
+# ---------------------------------------------------------------------------
+
+def test_wps_blocked_by_code_review_returns_set_for_rejected_wp():
+    rows = [
+        {"wp_id": "WP-0042", "timestamp": "2026-05-28T10:00:00+00:00", "code_review_verdict": "reject"},
+    ]
+    assert _wps_blocked_by_code_review(rows) == {"WP-0042"}
+
+
+def test_wps_blocked_by_code_review_latest_approve_overrides_earlier_reject():
+    rows = [
+        {"wp_id": "WP-0042", "timestamp": "2026-05-28T10:00:00+00:00", "code_review_verdict": "reject"},
+        {"wp_id": "WP-0042", "timestamp": "2026-05-28T11:00:00+00:00", "code_review_verdict": "approve"},
+    ]
+    assert _wps_blocked_by_code_review(rows) == set()
+
+
+def test_wps_blocked_by_code_review_handles_missing_verdict_key():
+    rows = [
+        {"wp_id": "WP-0042", "timestamp": "2026-05-28T10:00:00+00:00"},
+    ]
+    assert _wps_blocked_by_code_review(rows) == set()
+
+
+def test_loop_skips_wp_with_code_review_reject_on_record(tmp_path: Path):
+    """End-to-end: a WP with a reject audit row must not appear in the dry-run queue."""
+    _full_init(tmp_path)
+    wp_rejected = _add_wp(tmp_path, "Rejected job")
+    wp_clean = _add_wp(tmp_path, "Clean job")
+
+    # Seed the audit index with a reject row for wp_rejected
+    audit_dir = state_dir(tmp_path) / "audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+    index_path = audit_dir / "index.jsonl"
+    record = {
+        "wp_id": wp_rejected,
+        "timestamp": "2026-05-28T10:00:00+00:00",
+        "code_review_verdict": "reject",
+    }
+    index_path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+
+    runner = CliRunner()
+    r = runner.invoke(loop_cmd, ["--root", str(tmp_path), "--dry-run", "--json"])
+    assert r.exit_code == 0, r.output
+    payload = json.loads(r.output)
+    ids = [item["id"] for item in payload["queue"]]
+    assert wp_rejected not in ids
+    assert wp_clean in ids
+
+
+# ---------------------------------------------------------------------------
 
 def test_loop_stops_on_first_failure(tmp_path: Path):
     """If dispatch fails (Ollama returns bad diff), loop stops and reports WP."""
