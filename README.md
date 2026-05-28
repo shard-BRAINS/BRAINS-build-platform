@@ -28,7 +28,7 @@
 
 ## What this is
 
-The Build Platform turns any software project into a coordinated team of AI personas. A **PMO Lead** drives delivery, a **Dev Orchestrator** decomposes deliverables into work packages, and five executor SMEs — Frontend, Backend, QA, Security, DevOps — write the code. Mechanical work routes to a local Ollama model. Judgement work routes to Claude subagents.
+The Build Platform turns any software project into a coordinated team of AI personas. A **PMO Lead** drives delivery, a **Dev Orchestrator** decomposes deliverables into work packages, and six executor SMEs — Frontend, Backend, Code Review, QA, Security, DevOps — write, review, and verify the code. Mechanical work routes to a local Ollama model. Judgement work routes to Claude subagents.
 
 State lives in a `.brains-build/` folder inside your project. The dashboard at `.brains-build/dashboards/current.md` is the single source of truth — open it and you know where the build stands.
 
@@ -51,7 +51,7 @@ flowchart TD
     subgraph AGENTS["Subagents (~/.claude/agents/build/)"]
       direction LR
       LEAD["<b>Leadership</b><br/>PMO Lead<br/>Dev Orchestrator<br/>Product Owner<br/><span style='font-size:11px'>Opus</span>"]:::lead
-      SME["<b>Executor SMEs</b><br/>Frontend · Backend<br/>QA · Security · DevOps<br/><span style='font-size:11px'>Sonnet</span>"]:::sme
+      SME["<b>Executor SMEs</b><br/>Frontend · Backend · Code Review<br/>QA · Security · DevOps<br/><span style='font-size:11px'>Sonnet</span>"]:::sme
     end
 
     subgraph PKG["build_platform Python package"]
@@ -121,7 +121,7 @@ A work package is tier-1 only if **all four** hold:
 
 ### Tier-2 — judgement work, Claude SMEs
 
-Everything else. `/build-dispatch` writes a structured brief to `.brains-build/runs/<wp-id>/tier2-brief.md`, then spawns the named executor SME subagent. The SME reads the brief, edits code, runs tests, and produces a result block. QA verifies acceptance. Security runs in parallel on sensitive WPs (auth, data, dependencies).
+Everything else. `/build-dispatch` writes a structured brief to `.brains-build/runs/<wp-id>/tier2-brief.md`, then spawns the named executor SME subagent. The SME reads the brief, edits code, runs tests, and produces a result block. The **Code Review SME** then runs a read-only architectural / style pass; QA verifies acceptance; Security runs in parallel on sensitive WPs (auth, data, dependencies).
 
 ### The weekly scrum
 
