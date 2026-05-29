@@ -61,7 +61,7 @@ def test_full_loop(tmp_path: Path):
     with patch("build_platform.cli.dispatch.OllamaClient") as MockClient:
         instance = MockClient.return_value
         instance.preflight.return_value = None
-        instance.chat.return_value = diff
+        instance.chat_with_metrics.return_value = (diff, {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0})
         r = runner.invoke(dispatch_cmd, ["--root", str(tmp_path), "--wp", "WP-0001", "--json"])
         assert r.exit_code == 0, r.output
         assert json.loads(r.output)["tier"] == 1

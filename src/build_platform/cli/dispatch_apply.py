@@ -25,7 +25,7 @@ import click
 from build_platform.audit import AuditEntry, write_audit
 from build_platform.paths import find_brains_build_root, state_dir
 from build_platform.render_dashboard import render_dashboard
-from build_platform.schemas import WPState
+from build_platform.schemas import Autonomy, WPState
 from build_platform.state import load_config, load_wp_state, update_wp_state
 
 
@@ -74,6 +74,19 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
     if wp.state != WPState.DISPATCHED:
         _err(f"WP {wp_id} is in state {wp.state.value}, expected 'dispatched'",
              as_json, 1)
+
+    # Autonomy gate (WP-0016): auto / review-on-complete WPs require a verdict.
+    if (
+        wp.autonomy in {Autonomy.REVIEW_ON_COMPLETE, Autonomy.AUTO}
+        and code_review_verdict is None
+    ):
+        _err(
+            f"WP {wp_id} has autonomy={wp.autonomy.value} which requires "
+            f"--code-review-verdict. Run code review then re-invoke apply "
+            f"with --code-review-verdict approve|request-changes|reject.",
+            as_json,
+            7,
+        )
 
     diff_path = state_dir(root_path) / "runs" / wp_id / "proposed.diff"
     if not diff_path.exists():

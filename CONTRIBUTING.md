@@ -58,6 +58,14 @@ pip install -e ".[dev]"
 - [`tests/`](tests/) — pytest. Mirrors the package structure; one file per module.
 - [`docs/`](docs/) — long-form docs. Design specs under `docs/superpowers/specs/`, implementation plans under `docs/superpowers/plans/`, dogfood reports under `docs/dogfood/`.
 
+## Working with the persona subagents
+
+The `agents/build-*.md` files are subagent definitions Claude Code spawns via the `Agent` tool. Claude Code reads `~/.claude/agents/build/` **once at session start** and caches the registry. Consequences:
+
+- After running `install.ps1` to install a new persona (or after adding/editing one in `agents/`), **restart the Claude Code session** before the new persona becomes spawnable. A session that was running before the install will still see the old set of agents and report "Agent type 'build-X' not found" when you try to spawn the new one.
+- The CLI itself reads agent files lazily from disk, so `cli/dispatch` will still produce a tier-2 brief naming the missing persona — only the actual subagent spawn fails until you restart.
+- If you're mid-session and don't want to lose context, fall back to `general-purpose` with the persona's prompt copied verbatim. The dogfood from 2026-05-28 used this pattern when `build-code-review-sme` was added mid-session.
+
 ## Conventions worth knowing
 
 **State is on disk, not in heads.** Every CLI verb writes its outputs to `.brains-build/` (per-project state). Audit entries are append-only. The dashboard is a pure render of state — never the source of truth. Don't add behavior that depends on in-memory state surviving across invocations.

@@ -132,7 +132,7 @@ def test_happy_path_approve_records_verdict_in_audit(tmp_path: Path) -> None:
     with patch("build_platform.cli.dispatch.OllamaClient") as MockClient:
         instance = MockClient.return_value
         instance.preflight.return_value = None
-        instance.chat.return_value = _DIFF
+        instance.chat_with_metrics.return_value = (_DIFF, {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0})
         runner = CliRunner()
         r = runner.invoke(dispatch_cmd, [
             "--root", str(tmp_path), "--wp", wp_id, "--json",

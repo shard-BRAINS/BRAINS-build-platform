@@ -8,6 +8,7 @@ from build_platform.dispatcher import (
     DiffValidationError,
     DispatchError,
     check_diff_applies_cleanly,
+    classify_tier1_failure,
     dispatch_tier1,
     prepare_tier2_brief,
     strip_markdown_fences,
@@ -82,9 +83,11 @@ def test_dispatch_tier1_writes_proposed_diff(tmp_path: Path):
     project_root, wp = _seed(tmp_path)
     config = OllamaConfig(models=OllamaModels())
     client = OllamaClient(config)
-    client.chat = MagicMock(return_value=DIFF_SAMPLE)  # type: ignore
+    client.chat_with_metrics = MagicMock(  # type: ignore
+        return_value=(DIFF_SAMPLE, {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0})
+    )
 
-    proposed_path = dispatch_tier1(project_root, wp, client)
+    proposed_path, _ = dispatch_tier1(project_root, wp, client)
     assert proposed_path.exists()
     assert proposed_path.parent.name == "WP-0001"
 
@@ -93,11 +96,13 @@ def test_dispatch_tier1_retries_then_raises(tmp_path: Path):
     project_root, wp = _seed(tmp_path)
     config = OllamaConfig(models=OllamaModels())
     client = OllamaClient(config)
-    client.chat = MagicMock(return_value="not a diff")  # type: ignore
+    client.chat_with_metrics = MagicMock(  # type: ignore
+        return_value=("not a diff", {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0})
+    )
 
     with pytest.raises(DispatchError):
         dispatch_tier1(project_root, wp, client)
-    assert client.chat.call_count == 2
+    assert client.chat_with_metrics.call_count == 2
 
 
 def test_prepare_tier2_brief_emits_instruction_file(tmp_path: Path):
@@ -118,11 +123,11 @@ def test_tier1_prompt_contains_scope_discipline_section(tmp_path: Path):
     client = OllamaClient(config)
     captured: dict = {}
 
-    def capture_chat(*, model, prompt, system=None):
+    def capture_chat_with_metrics(*, model, prompt, system=None):
         captured["prompt"] = prompt
-        return DIFF_SAMPLE
+        return DIFF_SAMPLE, {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
 
-    client.chat = capture_chat  # type: ignore
+    client.chat_with_metrics = capture_chat_with_metrics  # type: ignore
     dispatch_tier1(project_root, wp, client)
     p = captured["prompt"]
     # Anti-speculation language
@@ -170,9 +175,11 @@ def test_dispatch_tier1_persists_clean_diff_when_input_is_fenced(tmp_path: Path)
     config = OllamaConfig(models=OllamaModels())
     client = OllamaClient(config)
     fenced = "```diff\n" + DIFF_SAMPLE.strip() + "\n```\n"
-    client.chat = MagicMock(return_value=fenced)  # type: ignore
+    client.chat_with_metrics = MagicMock(  # type: ignore
+        return_value=(fenced, {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0})
+    )
 
-    proposed = dispatch_tier1(project_root, wp, client)
+    proposed, _ = dispatch_tier1(project_root, wp, client)
     content = proposed.read_text(encoding="utf-8")
     assert not content.lstrip().startswith("```")
     assert content.lstrip().startswith("--- a/src/foo.py")
@@ -262,13 +269,18 @@ def test_dispatch_tier1_retries_when_diff_passes_validation_but_fails_apply(tmp_
         "--- a/src/foo.py\n+++ b/src/foo.py\n@@ -1 +1 @@\n"
         '-def hello(): return "old"\n+def hello(): return "new"\n'
     )
-    client.chat = MagicMock(side_effect=[bad, good])  # type: ignore
+    client.chat_with_metrics = MagicMock(  # type: ignore
+        side_effect=[
+            (bad, {"tokens_in": 10, "tokens_out": 5, "cost_usd": 0.0}),
+            (good, {"tokens_in": 10, "tokens_out": 5, "cost_usd": 0.0}),
+        ]
+    )
 
-    proposed = dispatch_tier1(project_root, wp, client)
+    proposed, _ = dispatch_tier1(project_root, wp, client)
     assert proposed.exists()
-    assert client.chat.call_count == 2
+    assert client.chat_with_metrics.call_count == 2
     # Second prompt should mention the hunk-counts hint
-    second_call_prompt = client.chat.call_args_list[1].kwargs["prompt"]
+    second_call_prompt = client.chat_with_metrics.call_args_list[1].kwargs["prompt"]
     assert "@@" in second_call_prompt
     assert "SOURCE_COUNT" in second_call_prompt
 
@@ -281,9 +293,107 @@ def test_dispatch_tier1_refuses_oversized_scope(tmp_path: Path):
 
     config = OllamaConfig(models=OllamaModels())
     client = OllamaClient(config)
-    client.chat = MagicMock()  # type: ignore
+    client.chat_with_metrics = MagicMock()  # type: ignore
 
     with pytest.raises(DispatchError) as ei:
         dispatch_tier1(project_root, wp, client)
     assert "50000" in str(ei.value) or "50,000" in str(ei.value) or "scope exceeds" in str(ei.value)
-    assert client.chat.call_count == 0  # never reached Ollama
+    assert client.chat_with_metrics.call_count == 0  # never reached Ollama
+
+
+# ---------------------------------------------------------------------------
+# WP-0014: classify_tier1_failure + DispatchError.suggested_action
+# ---------------------------------------------------------------------------
+
+def test_classify_tier1_failure_detects_undefined_name_marker():
+    """'undefined name' or missing Optional/Literal import in outputs -> retier-to-2."""
+    outputs = [
+        "some attempt output",
+        "NameError: undefined name 'Optional' not imported",
+    ]
+    result = classify_tier1_failure(outputs)
+    assert result == "retier-to-2"
+
+
+def test_classify_tier1_failure_detects_recurrent_backtick_fences():
+    """3+ backtick fences after the prompt forbade them -> retier-to-2."""
+    # Simulating raw outputs where the model keeps wrapping code in fences
+    fence_output = "```diff\n--- a/x\n+++ b/x\n```\n```diff\nmore\n```\n```\nyet more\n```"
+    outputs = ["first attempt no fence", fence_output]
+    result = classify_tier1_failure(outputs)
+    assert result == "retier-to-2"
+
+
+def test_classify_tier1_failure_detects_duplicate_function_definitions():
+    """Duplicate 'def foo(' in the proposed diff -> retier-to-2."""
+    dup_def_output = (
+        "--- a/src/x.py\n+++ b/src/x.py\n"
+        "@@ -1 +1 @@\n"
+        "+def process():\n"
+        "+    pass\n"
+        "+def process():\n"
+        "+    return 1\n"
+    )
+    outputs = ["first attempt ok", dup_def_output]
+    result = classify_tier1_failure(outputs)
+    assert result == "retier-to-2"
+
+
+def test_classify_tier1_failure_returns_none_on_clean_failure():
+    """A plain diff-format failure (not a capability gap) returns None."""
+    outputs = [
+        "--- a/src/foo.py\n+++ b/src/foo.py\n@@ -1 +1 @@\n-old\n+new\n",
+        "--- a/src/foo.py\n+++ b/src/foo.py\n@@ -1,6 +1,7 @@\n-old\n+new\n",
+    ]
+    result = classify_tier1_failure(outputs)
+    assert result is None
+
+
+def test_DispatchError_carries_suggested_action():
+    """DispatchError.suggested_action attribute is accessible."""
+    err = DispatchError("something went wrong")
+    err.suggested_action = "retier-to-2"  # type: ignore[attr-defined]
+    assert err.suggested_action == "retier-to-2"
+
+    err2 = DispatchError("plain error")
+    assert getattr(err2, "suggested_action", None) is None
+
+
+def test_dispatch_tier1_raises_with_suggested_action_on_capability_gap(tmp_path: Path):
+    """When both raw outputs show a capability-gap marker, DispatchError.suggested_action
+    is set to 'retier-to-2'."""
+    project_root, wp = _seed(tmp_path)
+    config = OllamaConfig(models=OllamaModels())
+    client = OllamaClient(config)
+    # Both attempts return output with a clear capability gap marker
+    bad_output = "NameError: undefined name 'Optional'"
+    client.chat_with_metrics = MagicMock(  # type: ignore
+        return_value=(bad_output, {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0})
+    )
+
+    with pytest.raises(DispatchError) as ei:
+        dispatch_tier1(project_root, wp, client)
+    assert getattr(ei.value, "suggested_action", None) == "retier-to-2"
+
+
+# ---------------------------------------------------------------------------
+# WP-0015: dispatch_tier1 returns (Path, metrics) tuple
+# ---------------------------------------------------------------------------
+
+def test_dispatch_tier1_returns_metrics_tuple(tmp_path: Path):
+    """dispatch_tier1 must return (Path, dict) with token counts."""
+    project_root, wp = _seed(tmp_path)
+    config = OllamaConfig(models=OllamaModels())
+    client = OllamaClient(config)
+    # chat_with_metrics is the new underlying method; mock it directly
+    client.chat_with_metrics = MagicMock(  # type: ignore
+        return_value=(DIFF_SAMPLE, {"tokens_in": 100, "tokens_out": 50, "cost_usd": 0.0})
+    )
+
+    result = dispatch_tier1(project_root, wp, client)
+    assert isinstance(result, tuple)
+    diff_path, metrics = result
+    assert diff_path.exists()
+    assert metrics["tokens_in"] == 100
+    assert metrics["tokens_out"] == 50
+    assert metrics["cost_usd"] == 0.0

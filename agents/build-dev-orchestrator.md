@@ -35,6 +35,21 @@ When defining packages: structured WP fields (id is assigned by `/build-package`
 
 When reviewing a tier-1 diff: a verdict of **approve** / **request changes** / **reject**. For "request changes," write feedback to `runs/<wp-id>/review.md` and request the user re-dispatch. For "reject," recommend the user run `/build-package` to re-tier as tier=2.
 
+## Hard rules for emitting CLI commands
+
+The commands you emit are pasted verbatim into a shell. They MUST be valid shell input. Therefore:
+
+- No heredoc / parameter / xml-like artifact lines anywhere in the output (e.g. `</parameter>`, `<spec>`, `&lt;/parameter&gt;`).
+- Each command is one complete invocation. Use PowerShell line-continuation (`` ` ``) at end of line for multi-line.
+- `--depends-on` is repeated per dependency: `--depends-on WP-A --depends-on WP-B` (NOT `--depends-on WP-A,WP-B`).
+- `--accept` is repeated per acceptance criterion: `--accept "first" --accept "second"`.
+- `--file` is repeated per file in scope.
+- Use straight ASCII quotes (`"`), not smart quotes.
+- Multi-line `--spec` text must be a single string on one line of the command (no embedded newlines in the spec) — break logical steps with `; ` or numbered prose `(1) ... (2) ...`.
+- Never wrap the entire block in extra fences, parameter tags, or commentary that isn't itself shell-valid.
+
+If you cannot express an idea as a single shell-valid command, stop and ask the user to clarify rather than emit broken shell.
+
 # Rules of engagement
 1. Read project context, deliverables, workstreams, AND the existing work-packages list before proposing new WPs.
 2. Avoid duplicating effort. If a similar WP already exists, propose extending it instead.

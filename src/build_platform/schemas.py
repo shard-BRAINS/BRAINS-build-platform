@@ -134,6 +134,15 @@ class GitHubMirrorConfig(BaseModel):
     repo: str | None = None
     label_prefix: str = "bbp:"  # namespace for platform-managed labels
     last_synced_at: str | None = None  # ISO-8601 of last successful push
+    auto_push_on_state_change: bool = Field(
+        default=False,
+        description=(
+            "If True, push_all runs synchronously after every update_wp_state call. "
+            "Trade-off: slow pushes block state writes. Disable if latency is "
+            "unacceptable; run /build-mirror push manually instead. "
+            "Defaults False for back-compat — existing projects are unaffected."
+        ),
+    )
 
 
 class Config(BaseModel):

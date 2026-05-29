@@ -135,3 +135,69 @@ def test_chat_does_not_retry_on_http_status_error(monkeypatch):
     with pytest.raises(OllamaError):
         client.chat(model="qwen2.5-coder:7b", prompt="hi")
     assert call_count["n"] == 1  # no retries on HTTP status errors
+
+
+# ---------------------------------------------------------------------------
+# WP-0015: chat_with_metrics
+# ---------------------------------------------------------------------------
+
+def test_chat_with_metrics_parses_prompt_eval_count_and_eval_count(monkeypatch):
+    """chat_with_metrics must return (text, dict) with token counts from Ollama response."""
+    fake_response = MagicMock()
+    fake_response.json.return_value = {
+        "message": {"role": "assistant", "content": "hello metrics"},
+        "prompt_eval_count": 42,
+        "eval_count": 17,
+    }
+    fake_response.raise_for_status.return_value = None
+    monkeypatch.setattr(httpx.Client, "post", lambda self, url, **kw: fake_response)
+    client = OllamaClient(_config())
+    text, metrics = client.chat_with_metrics(model="qwen2.5-coder:7b", prompt="hi")
+    assert text == "hello metrics"
+    assert metrics["tokens_in"] == 42
+    assert metrics["tokens_out"] == 17
+
+
+def test_chat_with_metrics_cost_usd_zero_for_ollama(monkeypatch):
+    """cost_usd is always 0.0 for local Ollama models."""
+    fake_response = MagicMock()
+    fake_response.json.return_value = {
+        "message": {"role": "assistant", "content": "x"},
+        "prompt_eval_count": 10,
+        "eval_count": 5,
+    }
+    fake_response.raise_for_status.return_value = None
+    monkeypatch.setattr(httpx.Client, "post", lambda self, url, **kw: fake_response)
+    client = OllamaClient(_config())
+    _, metrics = client.chat_with_metrics(model="qwen2.5-coder:7b", prompt="hi")
+    assert metrics["cost_usd"] == 0.0
+
+
+def test_chat_with_metrics_falls_back_to_zero_when_counts_absent(monkeypatch):
+    """If Ollama omits eval counts (e.g. streaming stub), default to 0 rather than error."""
+    fake_response = MagicMock()
+    fake_response.json.return_value = {
+        "message": {"role": "assistant", "content": "y"},
+    }
+    fake_response.raise_for_status.return_value = None
+    monkeypatch.setattr(httpx.Client, "post", lambda self, url, **kw: fake_response)
+    client = OllamaClient(_config())
+    text, metrics = client.chat_with_metrics(model="qwen2.5-coder:7b", prompt="hi")
+    assert text == "y"
+    assert metrics["tokens_in"] == 0
+    assert metrics["tokens_out"] == 0
+
+
+def test_chat_is_backward_compatible_with_new_implementation(monkeypatch):
+    """chat() still returns just the text string (thin wrapper around chat_with_metrics)."""
+    fake_response = MagicMock()
+    fake_response.json.return_value = {
+        "message": {"role": "assistant", "content": "compat"},
+        "prompt_eval_count": 8,
+        "eval_count": 3,
+    }
+    fake_response.raise_for_status.return_value = None
+    monkeypatch.setattr(httpx.Client, "post", lambda self, url, **kw: fake_response)
+    client = OllamaClient(_config())
+    out = client.chat(model="qwen2.5-coder:7b", prompt="hi")
+    assert out == "compat"  # not a tuple

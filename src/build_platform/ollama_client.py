@@ -52,11 +52,15 @@ class OllamaClient:
                 f"Run:\n{cmds}"
             )
 
-    def chat(self, model: str, prompt: str, *, system: str | None = None) -> str:
-        """Send a one-shot chat request; return assistant content.
+    def chat_with_metrics(
+        self, model: str, prompt: str, *, system: str | None = None
+    ) -> tuple[str, dict]:
+        """Send a one-shot chat request; return (assistant_content, metrics_dict).
 
-        Retries on transient network errors (ConnectError, timeouts) with
-        exponential backoff. HTTP status errors are not retried.
+        metrics_dict keys: tokens_in (int), tokens_out (int), cost_usd (float).
+        cost_usd is always 0.0 for local Ollama models.
+        Retries on transient network errors with exponential backoff.
+        HTTP status errors are not retried.
         """
         messages = []
         if system:
@@ -69,7 +73,14 @@ class OllamaClient:
             try:
                 r = self._client.post("/api/chat", json=payload)
                 r.raise_for_status()
-                return r.json()["message"]["content"]
+                data = r.json()
+                content = data["message"]["content"]
+                metrics = {
+                    "tokens_in": data.get("prompt_eval_count", 0),
+                    "tokens_out": data.get("eval_count", 0),
+                    "cost_usd": 0.0,
+                }
+                return content, metrics
             except _TRANSIENT_ERRORS as e:
                 last_transient = e
                 if attempt < self.config.max_retries - 1:
@@ -82,3 +93,13 @@ class OllamaClient:
                 raise OllamaError(f"Ollama chat failed: {e}") from e
         # Unreachable, but mypy/safety: surface the last transient if loop exits
         raise OllamaError(f"Ollama chat exhausted retries: {last_transient}")
+
+    def chat(self, model: str, prompt: str, *, system: str | None = None) -> str:
+        """Send a one-shot chat request; return assistant content.
+
+        Thin wrapper around chat_with_metrics that discards the metrics dict.
+        Kept for backward compatibility — existing callers that expect a plain
+        string are unaffected.
+        """
+        text, _ = self.chat_with_metrics(model=model, prompt=prompt, system=system)
+        return text

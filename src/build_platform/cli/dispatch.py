@@ -48,12 +48,13 @@ def dispatch_cmd(root, wp_id, as_json):
         except OllamaError as e:
             _err(str(e), as_json, 2)
         try:
-            diff_path = dispatch_tier1(root_path, wp, client)
+            diff_path, metrics = dispatch_tier1(root_path, wp, client)
         except DispatchError as e:
             update_wp_state(root_path, wp_id, WPState.BLOCKED,
                             by="build-dev-orchestrator", event=f"tier-1 dispatch failed: {e}")
             render_dashboard(root_path)
-            _err(str(e), as_json, 3)
+            suggested = getattr(e, "suggested_action", None)
+            _err_dispatch(str(e), as_json, 3, suggested_action=suggested)
         update_wp_state(root_path, wp_id, WPState.DISPATCHED,
                         by="build-dev-orchestrator",
                         event=f"tier-1 diff at {diff_path.relative_to(root_path)}")
@@ -64,6 +65,9 @@ def dispatch_cmd(root, wp_id, as_json):
             inputs_read=wp.spec_files,
             outputs_written=[str(diff_path.relative_to(root_path))],
             notes="Diff awaiting Dev Orchestrator review.",
+            tokens_in=metrics.get("tokens_in", 0),
+            tokens_out=metrics.get("tokens_out", 0),
+            cost_usd=metrics.get("cost_usd", 0.0),
         ))
         result_payload = {"ok": True, "wp_id": wp.id, "tier": 1,
                           "diff": str(diff_path), "warnings": [],
@@ -88,6 +92,10 @@ def dispatch_cmd(root, wp_id, as_json):
         update_wp_state(root_path, wp_id, WPState.DISPATCHED,
                         by="build-dev-orchestrator",
                         event=f"tier-2 brief at {brief_path.relative_to(root_path)}")
+        # tier-2 audit token fields are intentionally 0: the Claude subagent
+        # runs out-of-band and the dispatcher cannot observe its token usage.
+        # If/when the Claude Agent SDK exposes per-spawn token counts, plumb
+        # them through the subagent result block and into this AuditEntry.
         write_audit(root_path, AuditEntry(
             wp_id=wp.id, timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             persona=wp.executor_persona, model="claude-sonnet-4-6",
@@ -108,6 +116,25 @@ def dispatch_cmd(root, wp_id, as_json):
 
 def _err(msg: str, as_json: bool, code: int):
     click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    sys.exit(code)
+
+
+def _err_dispatch(msg: str, as_json: bool, code: int, *, suggested_action: str | None = None):
+    """Like _err but optionally embeds suggested_action in the error payload."""
+    if as_json:
+        payload: dict = {"error": msg}
+        if suggested_action:
+            payload["suggested_action"] = suggested_action
+        click.echo(json.dumps(payload), err=True)
+    else:
+        lines = [f"Error: {msg}"]
+        if suggested_action == "retier-to-2":
+            lines.append(
+                "Suggested next step: re-tier this WP to tier-2 with "
+                "`python -m build_platform.cli.dispatch_reject --wp <id> "
+                "--reason '...' --retier`"
+            )
+        click.echo("\n".join(lines), err=True)
     sys.exit(code)
 
 

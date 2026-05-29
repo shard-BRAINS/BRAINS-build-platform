@@ -8,8 +8,8 @@ from pathlib import Path
 import click
 
 from build_platform.paths import find_brains_build_root
-from build_platform.schemas import Autonomy, WorkPackage, WPState, WPTier
-from build_platform.state import append_work_package, load_work_packages, next_wp_id
+from build_platform.schemas import Autonomy, WPState, WPTier
+from build_platform.state import append_work_package_with_new_id, load_work_packages
 
 
 @click.command("package")
@@ -50,9 +50,8 @@ def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
         click.echo(json.dumps(payload) if as_json else payload["error"], err=True)
         sys.exit(2)
 
-    wp_id = next_wp_id(root_path)
-    wp = WorkPackage(
-        id=wp_id, title=title, workstream=workstream, deliverable_id=deliverable_id,
+    partial: dict = dict(
+        title=title, workstream=workstream, deliverable_id=deliverable_id,
         tier=WPTier(int(tier)), executor_persona=executor_persona,
         spec=spec, spec_files=list(spec_files), acceptance=list(acceptance),
         depends_on=list(depends_on), consult=list(consult),
@@ -61,12 +60,12 @@ def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
         history=[],
         autonomy=Autonomy(autonomy),
     )
-    if wp.tier == WPTier.ONE:
-        if len(wp.spec_files) > 3:
-            payload = {"error": f"Tier-1 WP must touch <= 3 files; got {len(wp.spec_files)}"}
+    if WPTier(int(tier)) == WPTier.ONE:
+        if len(partial["spec_files"]) > 3:
+            payload = {"error": f"Tier-1 WP must touch <= 3 files; got {len(partial['spec_files'])}"}
             click.echo(json.dumps(payload) if as_json else payload["error"], err=True)
             sys.exit(2)
-    append_work_package(root_path, wp)
+    wp = append_work_package_with_new_id(root_path, partial)
     payload = {"ok": True, "wp_id": wp.id}
     click.echo(json.dumps(payload) if as_json else f"Created {wp.id}: {title}")
 

@@ -14,8 +14,8 @@ from build_platform.cli.dispatch_apply import apply_cmd
 from build_platform.cli.init import init_cmd
 from build_platform.cli.package import package_cmd
 from build_platform.paths import state_dir
-from build_platform.schemas import WPState
-from build_platform.state import load_wp_state, update_wp_state
+from build_platform.schemas import Autonomy, WPState
+from build_platform.state import load_wp_state, update_wp_state, update_work_package_fields
 
 # A diff that flips a one-liner from "old" to "new" — applies cleanly to the
 # test fixture below.
@@ -324,3 +324,85 @@ def test_apply_with_request_changes_delegates_to_dispatch_request_changes(tmp_pa
     code_review_md = state_dir(tmp_path) / "runs" / "WP-0001" / "code-review.md"
     assert code_review_md.exists()
     assert "Finding alpha" in code_review_md.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# WP-0016: autonomy gate — auto/review-on-complete require --code-review-verdict
+# ---------------------------------------------------------------------------
+
+def _set_autonomy(tmp_path: Path, wp_id: str, autonomy: Autonomy) -> None:
+    """Helper: update WP autonomy field via update_work_package_fields."""
+    update_work_package_fields(
+        tmp_path, wp_id, {"autonomy": autonomy},
+        by="test-setup", event=f"set autonomy={autonomy.value}",
+    )
+
+
+def test_apply_autonomy_auto_without_verdict_exits_7(tmp_path: Path):
+    """autonomy=auto + no --code-review-verdict must exit 7 with explicit message."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+    _set_autonomy(tmp_path, "WP-0001", Autonomy.AUTO)
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test", "--json",
+    ])
+    assert r.exit_code == 7, r.output
+    assert "autonomy=auto" in r.output
+    assert "--code-review-verdict" in r.output
+
+
+def test_apply_autonomy_review_on_complete_without_verdict_exits_7(tmp_path: Path):
+    """autonomy=review-on-complete + no --code-review-verdict must exit 7."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+    _set_autonomy(tmp_path, "WP-0001", Autonomy.REVIEW_ON_COMPLETE)
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test", "--json",
+    ])
+    assert r.exit_code == 7, r.output
+    assert "autonomy=review-on-complete" in r.output
+    assert "--code-review-verdict" in r.output
+
+
+def test_apply_autonomy_manual_without_verdict_works_as_today(tmp_path: Path):
+    """autonomy=manual + no --code-review-verdict: back-compat; apply proceeds normally."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+    # WP-0001 has autonomy=manual by default — no explicit override needed
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test", "--json",
+    ])
+    assert r.exit_code == 0, r.output
+    payload = json.loads(r.output)
+    assert payload["ok"] is True
+    wps = load_wp_state(tmp_path)
+    assert wps["WP-0001"].state == WPState.IN_REVIEW
+
+
+def test_apply_autonomy_auto_with_verdict_approve_proceeds_normally(tmp_path: Path):
+    """autonomy=auto + --code-review-verdict=approve: gate is satisfied, apply succeeds."""
+    _setup_project(tmp_path, test_command="")
+    _write_proposed(tmp_path, "WP-0001", GOOD_DIFF)
+    _set_dispatched(tmp_path, "WP-0001")
+    _set_autonomy(tmp_path, "WP-0001", Autonomy.AUTO)
+
+    runner = CliRunner()
+    r = runner.invoke(apply_cmd, [
+        "--root", str(tmp_path), "--wp", "WP-0001", "--no-test",
+        "--code-review-verdict", "approve",
+        "--json",
+    ])
+    assert r.exit_code == 0, r.output
+    payload = json.loads(r.output)
+    assert payload["ok"] is True
+    wps = load_wp_state(tmp_path)
+    assert wps["WP-0001"].state == WPState.IN_REVIEW

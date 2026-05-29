@@ -1,4 +1,9 @@
-"""Core dispatch: tier-1 (Ollama) and tier-2 (Claude subagent brief)."""
+"""Core dispatch: tier-1 (Ollama) and tier-2 (Claude subagent brief).
+
+API note (WP-0015): dispatch_tier1 now returns a (Path, dict) tuple instead of
+a bare Path. The dict has keys tokens_in, tokens_out, cost_usd from the Ollama
+response. The only caller, cli/dispatch.py, was updated in the same change.
+"""
 import re
 import subprocess
 import tempfile
@@ -16,7 +21,15 @@ TIER1_MAX_BYTES = 50_000
 
 
 class DispatchError(RuntimeError):
-    """Dispatch failed in a recoverable-by-human way (e.g., 2 retries exhausted)."""
+    """Dispatch failed in a recoverable-by-human way (e.g., 2 retries exhausted).
+
+    Attributes:
+        suggested_action: Optional hint for the caller (e.g. "retier-to-2").
+            Set by dispatch_tier1 when classify_tier1_failure detects a
+            model-capability gap across both attempts.
+    """
+
+    suggested_action: str | None = None
 
 
 class DiffValidationError(DispatchError):
@@ -28,6 +41,41 @@ _DIFF_HEADER_PLUS = re.compile(r"^\+\+\+\s+b/(?P<path>.+)$", re.MULTILINE)
 _DIFF_HUNK = re.compile(r"^@@\s+-\d+", re.MULTILINE)
 _FENCE_OPEN = re.compile(r"^```[\w-]*\s*\n", re.MULTILINE)
 _FENCE_CLOSE = re.compile(r"\n```\s*$")
+
+# Patterns used by classify_tier1_failure to detect model-capability gaps.
+_UNDEF_NAME = re.compile(r"undefined\s+name|NameError.*Optional|NameError.*Literal", re.IGNORECASE)
+_FENCE_ANY = re.compile(r"```")
+_DUP_DEF = re.compile(r"^\+def\s+(\w+)\s*\(", re.MULTILINE)
+
+
+def classify_tier1_failure(raw_outputs: list[str]) -> str | None:
+    """Classify whether exhausted tier-1 retries indicate a model-capability gap.
+
+    Returns "retier-to-2" when any of the following patterns are detected across
+    the collected raw outputs, None otherwise:
+
+    - "undefined name" / NameError referencing Optional or Literal (missing imports)
+    - 3 or more backtick fence markers (``` ) in total across all outputs
+    - Duplicate function definitions (same 'def name(' added multiple times in one output)
+    """
+    combined = "\n".join(raw_outputs)
+
+    # Pattern 1: unresolved name / missing import markers
+    if _UNDEF_NAME.search(combined):
+        return "retier-to-2"
+
+    # Pattern 2: recurrent backtick fences after the prompt explicitly forbids them.
+    # Count all ``` occurrences across all outputs; 3+ suggests persistent bad habit.
+    if len(_FENCE_ANY.findall(combined)) >= 3:
+        return "retier-to-2"
+
+    # Pattern 3: duplicate function definitions within any single output.
+    for output in raw_outputs:
+        defs = _DUP_DEF.findall(output)
+        if len(defs) != len(set(defs)):
+            return "retier-to-2"
+
+    return None
 
 
 def strip_markdown_fences(text: str) -> str:
@@ -137,11 +185,20 @@ PERSONA_MISSIONS = {
 }
 
 
-def dispatch_tier1(project_root: Path, wp: WorkPackage, client: OllamaClient) -> Path:
+def dispatch_tier1(
+    project_root: Path, wp: WorkPackage, client: OllamaClient
+) -> tuple[Path, dict]:
     """Send WP to Ollama, validate diff, write to runs/<wp-id>/proposed.diff.
 
     Retries once with stricter prompt on validation failure. Raises DispatchError
     after second failure.
+
+    Returns:
+        (diff_path, metrics_dict) where metrics_dict has keys tokens_in,
+        tokens_out, cost_usd (summed across all chat calls made).
+
+    API change (WP-0015): previously returned bare Path; now returns a tuple.
+    The only caller, cli/dispatch.py, was updated in the same changeset.
     """
     scope = _read_scope_files(project_root, wp.spec_files)
     config = client.config
@@ -150,6 +207,9 @@ def dispatch_tier1(project_root: Path, wp: WorkPackage, client: OllamaClient) ->
     runs.mkdir(parents=True, exist_ok=True)
 
     review_feedback: str | None = None
+    raw_outputs: list[str] = []
+    total_metrics: dict = {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
+
     for attempt in range(2):
         prompt = _tier1_template().render(
             persona_mission=PERSONA_MISSIONS.get(wp.executor_persona, ""),
@@ -159,7 +219,11 @@ def dispatch_tier1(project_root: Path, wp: WorkPackage, client: OllamaClient) ->
             review_feedback=review_feedback,
         )
         (runs / f"prompt-attempt{attempt + 1}.txt").write_text(prompt, encoding="utf-8")
-        raw = client.chat(model=config.models.tier1_default, prompt=prompt)
+        raw, metrics = client.chat_with_metrics(model=config.models.tier1_default, prompt=prompt)
+        total_metrics["tokens_in"] += metrics.get("tokens_in", 0)
+        total_metrics["tokens_out"] += metrics.get("tokens_out", 0)
+        total_metrics["cost_usd"] += metrics.get("cost_usd", 0.0)
+        raw_outputs.append(raw)
         (runs / f"raw-attempt{attempt + 1}.txt").write_text(raw, encoding="utf-8")
         try:
             validate_diff(raw, allowed_files=wp.spec_files)
@@ -190,11 +254,15 @@ def dispatch_tier1(project_root: Path, wp: WorkPackage, client: OllamaClient) ->
         diff_path = runs / "proposed.diff"
         # Persist the canonicalized form (fences stripped) so `git apply` works directly.
         diff_path.write_text(cleaned, encoding="utf-8")
-        return diff_path
-    raise DispatchError(
+        return diff_path, total_metrics
+
+    err = DispatchError(
         f"Tier-1 dispatch for {wp.id} failed validation twice. "
         f"See runs/{wp.id}/ for prompts and raw outputs."
     )
+    suggestion = classify_tier1_failure(raw_outputs)
+    err.suggested_action = suggestion
+    raise err
 
 
 def prepare_tier2_brief(project_root: Path, wp: WorkPackage) -> Path:

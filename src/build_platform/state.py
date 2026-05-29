@@ -1,8 +1,10 @@
 """Read/write state files under .brains-build/."""
 import json
+import sys
 from pathlib import Path
 from typing import Iterable
 
+import filelock
 from ruamel.yaml import YAML
 
 from build_platform.paths import state_dir
@@ -110,6 +112,29 @@ def next_wp_id(project_root: Path) -> str:
     return f"WP-{max_n + 1:04d}"
 
 
+def append_work_package_with_new_id(
+    project_root: Path,
+    wp_partial: dict,
+) -> WorkPackage:
+    """Allocate a new sequential WP id and append atomically.
+
+    Accepts every WorkPackage field *except* ``id``; the id is assigned inside
+    a ``filelock.FileLock`` on ``work-packages.jsonl.lock`` so that parallel
+    CLI invocations never collide.
+
+    Returns the fully-constructed :class:`WorkPackage` (including its new id).
+    """
+    jsonl_path = state_dir(project_root) / "work-packages.jsonl"
+    lock_path = jsonl_path.with_suffix(".jsonl.lock")
+    with filelock.FileLock(str(lock_path)):
+        wp_id = next_wp_id(project_root)
+        wp = WorkPackage(id=wp_id, **wp_partial)
+        line = json.dumps(wp.model_dump(mode="json"), separators=(",", ":"))
+        with jsonl_path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    return wp
+
+
 def update_wp_state(
     project_root: Path,
     wp_id: str,
@@ -144,6 +169,18 @@ def update_wp_state(
     if updated is None:
         raise KeyError(f"WP {wp_id} not found")
     path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+
+    # Auto-mirror hook (WP-0017): push to GitHub after every state change if
+    # the project opts in. Mirror failures must NOT propagate — log and continue.
+    try:
+        config = load_config(project_root)
+        if config.github.enabled and config.github.auto_push_on_state_change:
+            import build_platform.github_mirror as _mirror  # noqa: PLC0415
+            _mirror.push_all(project_root, dry_run=False)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[build-platform] auto-mirror push failed (non-fatal): {exc}",
+              file=sys.stderr)
+
     return updated
 
 
