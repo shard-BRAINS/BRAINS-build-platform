@@ -273,7 +273,8 @@ This is a **BRAINS Incubator** project — internal tooling that's reusable acro
 | ![Resume](https://img.shields.io/badge/-brains--resume-D99518?style=flat-square&labelColor=0A0A0A) | The first live Incubator project — [ND-aware résumé toolkit](https://github.com/shard-BRAINS/BRAINS-resume-skill) |
 | ![Discord](https://img.shields.io/badge/-Discord-5865F2?style=flat-square&logo=discord&logoColor=FFFFFF&labelColor=0A0A0A) | Join the BRAINS Community — [discord.gg/BEmTXXscBr](https://discord.gg/BEmTXXscBr) |
 
-If you'd like to use the platform on your own project, or contribute, see the Incubator application process at the [org page](https://github.com/shard-BRAINS#apply-to-join-the-incubator), or jump straight into [the Discord](https://discord.gg/BEmTXXscBr) to talk first.
+| ![Bluesky](https://img.shields.io/badge/-Bluesky-D99518?style=flat-square&logo=bluesky&logoColor=FFFFFF&labelColor=0A0A0A) | Follow updates — [@brainscertified.com on Bluesky](https://bsky.app/profile/brainscertified.com) |
+If you'd like to use the platform on your own project, or contribute, see the Incubator application process at the [org page](https://github.com/shard-BRAINS#apply-to-join-the-incubator), or jump straight into [the Discord](https://discord.gg/BEmTXXscBr) to talk first, or follow updates on [Bluesky](https://bsky.app/profile/brainscertified.com).
 
 ---
 
