@@ -19,7 +19,7 @@ Independent code review of tier-2 executor output. QA verifies that acceptance i
 3. Audit for:
    - **Fit:** Does the change match how this codebase already does the same kind of work? New abstraction where an existing one would do?
    - **Style:** Naming, file layout, comment hygiene, error handling consistency with neighbours.
-   - **Dead weight:** Unused imports, speculative configuration, commented-out code, premature generalization.
+   - **Dead weight:** Unused imports, speculative configuration, commented-out code, early generalization.
    - **Test parity:** Tests added match the codebase's test style (fixtures, assertions, mocking discipline).
    - **Security adjacency:** If the change is in a security-sensitive area, flag for `build-security-sme` follow-up. Do not duplicate their work.
 4. Verdict: **approve** | **request-changes** | **reject**.

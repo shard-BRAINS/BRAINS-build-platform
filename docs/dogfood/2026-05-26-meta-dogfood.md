@@ -82,7 +82,7 @@ Severity scale: **critical** = blocks platform from being used safely · **impor
 **Where:** `src/build_platform/cli/package.py`
 **Reproduction:** Run `/build-package --tier 2 ... --depends-on WP-9999` on a fresh project. CLI exits 0; the WP is created with a dependency that will never resolve. Later `/build-dispatch` will refuse with "unmet deps: ['WP-9999']" but at that point the WP is already in the JSONL.
 
-**Real-world impact:** When the Dev Orchestrator drafts multiple WPs at once and predicts WP IDs ahead of `next_wp_id`, it's easy to typo or miscount and the CLI silently accepts. Happened twice in this session.
+**Real-world impact:** When the Dev Orchestrator drafts multiple WPs at once and predicts WP IDs ahead of `next_wp_id`, a typo or miscount slips through and the CLI silently accepts. Happened twice in this session.
 
 **Fix:** `package_cmd` should `load_work_packages(root_path)`, build the existing-ID set, and reject `--depends-on` IDs not present.
 
@@ -154,7 +154,7 @@ This makes the public-state-change action two-step by default, which matches how
 
 **Severity:** minor
 **Where:** `github_mirror.py::push_workpackage`
-**Reproduction:** WP-0001 is locally `blocked` after the rejected dispatch. The GitHub issue has the `bbp:state-blocked` label but the issue is **open** (because blocked auto-reopens). A reviewer scanning the repo can easily miss the label; the title still reads "[WP-0001] Extend MirrorMap...".
+**Reproduction:** WP-0001 is locally `blocked` after the rejected dispatch. The GitHub issue has the `bbp:state-blocked` label but the issue is **open** (because blocked auto-reopens). A reviewer scanning the repo can miss the label; the title still reads "[WP-0001] Extend MirrorMap...".
 
 **Fix:** add a `[BLOCKED]` prefix to the title when state is blocked, OR add a header line in the body. Remove the prefix when state transitions back to active.
 

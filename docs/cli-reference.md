@@ -37,7 +37,7 @@ python -m build_platform.cli.init `
 
 **Writes:** `.brains-build/project.yml`, `deliverables.yml`, `workstreams.yml` (5 default workstreams), `config.yml`, empty `work-packages.jsonl`, seeded `decisions.md`.
 
-**Exit codes:** `0` success · `1` already initialized · `2` invalid deliverable format.
+**Exit codes:** `0` success · `1` already initialized · `2` malformed deliverable format.
 
 ---
 
@@ -428,11 +428,11 @@ python -m build_platform.cli.schedule_scrum `
 }
 ```
 
-**Why the routine only sends a reminder:** remote routines created by `/schedule` run in Claude's cloud and cannot read the local `.brains-build/`. So the routine sends a `PushNotification` reminding the user to run `/build-scrum` themselves. True autonomous remote scrum requires the v2 GitHub mirror.
+**Why the routine only sends a reminder:** remote routines created by `/schedule` run in Claude's cloud and cannot read the local `.brains-build/`. The routine therefore sends a `PushNotification` reminding the user to run `/build-scrum` themselves. True autonomous remote scrum requires the v2 GitHub mirror.
 
 **Side effects:** Writes `scrum_schedule.{enabled, cron, timezone, routine_id}` to `.brains-build/config.yml`.
 
-**Exit codes:** `0` success · `2` invalid day/hour/minute.
+**Exit codes:** `0` success · `2` malformed day/hour/minute.
 
 ---
 
@@ -540,7 +540,7 @@ Reconciles everything. On first run, seeds platform labels (state-*, tier-1/2, w
 }
 ```
 
-**Exit codes:** `0` success · `2` mirror disabled or `gh` failure.
+**Exit codes:** `0` success · `2` mirror turned off or `gh` failure.
 
 ### `mirror pull` (v2.6)
 
@@ -572,7 +572,7 @@ Reconcile remote GitHub signals back into local state. Read-only on GitHub.
 }
 ```
 
-**Exit codes:** `0` success · `2` mirror disabled.
+**Exit codes:** `0` success · `2` mirror turned off.
 
 ### `mirror status`
 
@@ -716,7 +716,7 @@ python -m build_platform.cli.persona register `
 }
 ```
 
-**Exit codes:** `0` success · `2` invalid id · `3` already exists (use `--force`).
+**Exit codes:** `0` success · `2` malformed id · `3` already exists (use `--force`).
 
 ### `persona list`
 

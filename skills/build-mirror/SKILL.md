@@ -1,6 +1,6 @@
 ---
 name: build-mirror
-description: One-way push mirror of the active project's WPs and sprints to GitHub Issues + Milestones. Use when the user wants work packages visible in GitHub (so dev teams can see/comment on them), or asks "sync to GitHub", "push to GitHub", "mirror this build". Three subcommands: init, push, status.
+description: 'One-way push mirror of the active project''s WPs and sprints to GitHub Issues + Milestones. Use when the user wants work packages visible in GitHub (so dev teams can see/comment on them), or asks "sync to GitHub", "push to GitHub", "mirror this build". Three subcommands: init, push, status.'
 ---
 
 # Mirror local state to GitHub

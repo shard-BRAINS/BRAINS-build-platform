@@ -142,7 +142,7 @@ All 8 personas live as standalone subagent definitions under `C:\Users\matth\.cl
 - **Consulted** — personas named in WP's `consult` field (spawned read-only during dispatch)
 - **Informed** — PMO Lead always; user via dashboard
 
-RACI emerges from the audit trail + persona definitions. There is no separate RACI matrix file to maintain.
+RACI emerges from the audit trail + persona definitions. No separate RACI matrix file needs maintaining.
 
 ---
 
@@ -450,7 +450,7 @@ Proof MVP works:
 3. `/build-scrum` produces a recap file and refreshed dashboard reflecting actual state.
 4. `dashboards/current.md` shows Plan position, Live, Health, Blockers, Up next — enough to answer "where are we" without invoking the platform.
 5. Any WP's full lifecycle can be reconstructed from `.brains-build/audit/` files alone.
-6. Tier-1 dispatch failure paths (Ollama down, model missing, invalid diff, Dev Orch rejects) all produce clear errors and correct state transitions without manual intervention.
+6. Tier-1 dispatch failure paths (Ollama down, model missing, malformed diff, Dev Orch rejects) all produce clear errors and correct state transitions without manual intervention.
 7. All 8 skills (1 master router + 7 verbs) pass a smoke test: load SKILL.md, invoke each verb's primary command on a seeded project, expect no errors.
 
 ---

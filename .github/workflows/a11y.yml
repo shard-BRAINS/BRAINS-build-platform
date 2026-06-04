@@ -1,0 +1,85 @@
+name: Accessibility (axe-core + Pa11y)
+
+# Opt-in for repos with a web surface.
+# Enable by setting the repository variable HAS_WEB_UI=true
+# and providing a STATIC_DIR (default: ./public) or START_URL.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Should run?
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - id: gate
+        run: |
+          if [[ "${{ vars.HAS_WEB_UI }}" == "true" ]]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+            echo "Skipping: set repo variable HAS_WEB_UI=true to enable."
+          fi
+
+  axe:
+    name: axe-core
+    needs: check
+    if: needs.check.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm ci || npm install
+
+      - name: Serve static dir
+        run: |
+          npx --yes http-server ${{ vars.STATIC_DIR || './public' }} -p 8080 &
+          npx --yes wait-on http://localhost:8080
+
+      - name: Run axe
+        run: |
+          npx --yes @axe-core/cli http://localhost:8080 \
+            --tags wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22a,wcag22aa \
+            --exit
+
+  pa11y:
+    name: Pa11y
+    needs: check
+    if: needs.check.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Serve static dir
+        run: |
+          npx --yes http-server ${{ vars.STATIC_DIR || './public' }} -p 8080 &
+          npx --yes wait-on http://localhost:8080
+
+      - name: Run Pa11y
+        run: |
+          npx --yes pa11y http://localhost:8080 \
+            --standard WCAG2AA \
+            --runner axe \
+            --runner htmlcs
