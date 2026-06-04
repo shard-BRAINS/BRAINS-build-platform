@@ -1,5 +1,7 @@
 # BRAINS Build Platform v1 — Implementation Plan
 
+<!-- markdownlint-disable MD024 (plan repeats per-WP template headings by design) -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship the BRAINS Build Platform v1 as a family of 8 Claude skills + 8 subagent definitions + a shared Python package, capable of running a full deliverable → work-package → dispatch → scrum loop on any project.
@@ -16,7 +18,7 @@
 
 **Development repo** (`c:\BRAINS_Build_Platform\`):
 
-```
+```text
 c:\BRAINS_Build_Platform\
 ├── pyproject.toml                     # Python package metadata + deps
 ├── README.md                          # Quickstart
@@ -83,6 +85,7 @@ c:\BRAINS_Build_Platform\
 ```
 
 **Installed layout** (after `install.ps1`):
+
 - `C:\Users\matth\.claude\skills\build-*\SKILL.md` — 8 skill files
 - `C:\Users\matth\.claude\agents\build\*.md` — 8 subagent files
 - `build_platform` Python package installed editable (`pip install -e c:\BRAINS_Build_Platform`)
@@ -93,6 +96,7 @@ c:\BRAINS_Build_Platform\
 ## Task 0: Repo initialization
 
 **Files:**
+
 - Create: `c:\BRAINS_Build_Platform\.gitignore`
 - Create: `c:\BRAINS_Build_Platform\pyproject.toml`
 - Create: `c:\BRAINS_Build_Platform\README.md`
@@ -103,6 +107,7 @@ c:\BRAINS_Build_Platform\
 - [ ] **Step 1: Initialize git repo**
 
 Run:
+
 ```powershell
 cd c:\BRAINS_Build_Platform
 git init -b main
@@ -110,7 +115,7 @@ git init -b main
 
 - [ ] **Step 2: Create .gitignore**
 
-```
+```text
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -189,7 +194,8 @@ mkdir c:\path\to\new-project
 cd c:\path\to\new-project
 # In Claude Code: /build-init
 ```
-```
+
+```text
 
 - [ ] **Step 5: Create empty __init__.py for the package**
 
@@ -200,13 +206,15 @@ cd c:\path\to\new-project
 __version__ = "0.1.0"
 ```
 
-- [ ] **Step 6: Create tests/__init__.py and conftest.py**
+- [ ] **Step 6: Create tests/**init**.py and conftest.py**
 
 `tests/__init__.py`:
+
 ```python
 ```
 
 `tests/conftest.py`:
+
 ```python
 """Shared pytest fixtures."""
 import shutil
@@ -238,12 +246,14 @@ New-Item -ItemType Directory -Force -Path c:\BRAINS_Build_Platform\tests\fixture
 - [ ] **Step 8: Verify Python package installs**
 
 Run:
+
 ```powershell
 cd c:\BRAINS_Build_Platform
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
+
 Expected: installs without error.
 
 - [ ] **Step 9: Run empty test suite**
@@ -265,12 +275,14 @@ git commit -m "chore: repo scaffolding (pyproject, package skeleton, test harnes
 Locates the `.brains-build/` root for the current working directory. Walks up the tree like git does.
 
 **Files:**
+
 - Create: `src/build_platform/paths.py`
 - Test: `tests/test_paths.py`
 
 - [ ] **Step 1: Write failing test**
 
 `tests/test_paths.py`:
+
 ```python
 """Tests for paths.py."""
 from pathlib import Path
@@ -317,6 +329,7 @@ Expected: ImportError (module doesn't exist).
 - [ ] **Step 3: Implement paths.py**
 
 `src/build_platform/paths.py`:
+
 ```python
 """Resolve .brains-build/ root for the current project."""
 from pathlib import Path
@@ -367,12 +380,14 @@ git commit -m "feat(paths): resolve .brains-build/ root from cwd"
 Pydantic models for every state file. Single source of truth for field names and types.
 
 **Files:**
+
 - Create: `src/build_platform/schemas.py`
 - Test: `tests/test_schemas.py`
 
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_schemas.py`:
+
 ```python
 """Tests for schemas.py."""
 import pytest
@@ -469,6 +484,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement schemas.py**
 
 `src/build_platform/schemas.py`:
+
 ```python
 """Pydantic models for all .brains-build/ state files."""
 from enum import Enum
@@ -586,12 +602,14 @@ git commit -m "feat(schemas): pydantic models for all state files"
 Read/write the typed state files. YAML for human-edit files, JSONL for the work-package log.
 
 **Files:**
+
 - Create: `src/build_platform/state.py`
 - Test: `tests/test_state.py`
 
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_state.py`:
+
 ```python
 """Tests for state.py."""
 from datetime import datetime, timezone
@@ -748,6 +766,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement state.py**
 
 `src/build_platform/state.py`:
+
 ```python
 """Read/write state files under .brains-build/."""
 import json
@@ -934,6 +953,7 @@ git commit -m "feat(state): read/write/validate all .brains-build/ state files"
 One audit entry per dispatch. Markdown for greppability.
 
 **Files:**
+
 - Create: `src/build_platform/audit.py`
 - Create: `templates/audit_entry.md.j2`
 - Test: `tests/test_audit.py`
@@ -941,6 +961,7 @@ One audit entry per dispatch. Markdown for greppability.
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_audit.py`:
+
 ```python
 """Tests for audit.py."""
 from pathlib import Path
@@ -996,6 +1017,7 @@ Expected: ImportError.
 - [ ] **Step 3: Create the template**
 
 `templates/audit_entry.md.j2`:
+
 ```jinja
 # {{ wp_id }} dispatch · {{ timestamp }}
 
@@ -1025,6 +1047,7 @@ Expected: ImportError.
 - [ ] **Step 4: Implement audit.py**
 
 `src/build_platform/audit.py`:
+
 ```python
 """Append-only audit trail under .brains-build/audit/."""
 from pathlib import Path
@@ -1080,6 +1103,7 @@ New-Item -ItemType File -Path c:\BRAINS_Build_Platform\src\build_platform\templa
 Also update `pyproject.toml` package data:
 
 Change in `pyproject.toml`:
+
 ```toml
 [tool.setuptools.package-data]
 build_platform = ["templates/*.j2", "templates/*.md.j2"]
@@ -1106,12 +1130,14 @@ git commit -m "feat(audit): write per-dispatch audit entries via jinja template"
 Read-only git helpers for "since last scrum" diffs. Gracefully no-ops when project isn't a git repo.
 
 **Files:**
+
 - Create: `src/build_platform/git_utils.py`
 - Test: `tests/test_git_utils.py`
 
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_git_utils.py`:
+
 ```python
 """Tests for git_utils.py."""
 import subprocess
@@ -1158,6 +1184,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement git_utils.py**
 
 `src/build_platform/git_utils.py`:
+
 ```python
 """Read-only git helpers. Safe on non-git directories."""
 import subprocess
@@ -1217,12 +1244,14 @@ git commit -m "feat(git): read-only commits-since helper"
 HTTP client + preflight check.
 
 **Files:**
+
 - Create: `src/build_platform/ollama_client.py`
 - Test: `tests/test_ollama_client.py`
 
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_ollama_client.py`:
+
 ```python
 """Tests for ollama_client.py — mock httpx; do not hit a real Ollama."""
 from unittest.mock import MagicMock
@@ -1315,6 +1344,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement ollama_client.py**
 
 `src/build_platform/ollama_client.py`:
+
 ```python
 """HTTP client for a locally-running Ollama instance."""
 import httpx
@@ -1397,12 +1427,14 @@ git commit -m "feat(ollama): HTTP client with preflight and chat"
 Pre-digest large inputs using the summarizer model.
 
 **Files:**
+
 - Create: `src/build_platform/digest.py`
 - Test: `tests/test_digest.py`
 
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_digest.py`:
+
 ```python
 """Tests for digest.py."""
 from pathlib import Path
@@ -1447,6 +1479,7 @@ Expected: ImportError.
 - [ ] **Step 3: Implement digest.py**
 
 `src/build_platform/digest.py`:
+
 ```python
 """Token-saving pre-digest helper using a small local model."""
 from pathlib import Path
@@ -1505,6 +1538,7 @@ git commit -m "feat(digest): pre-summarize large inputs via summarizer model"
 Deterministic markdown emitter from current state.
 
 **Files:**
+
 - Create: `src/build_platform/render_dashboard.py`
 - Create: `src/build_platform/templates/dashboard.md.j2`
 - Test: `tests/test_render_dashboard.py`
@@ -1512,6 +1546,7 @@ Deterministic markdown emitter from current state.
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_render_dashboard.py`:
+
 ```python
 """Tests for render_dashboard.py."""
 from datetime import datetime, timezone
@@ -1636,6 +1671,7 @@ Expected: ImportError.
 - [ ] **Step 3: Create the template**
 
 `src/build_platform/templates/dashboard.md.j2`:
+
 ```jinja
 # {{ project.name }} — PMO Dashboard
 _Generated: {{ generated_at }} · Sprint: {{ sprint_number }} · Day {{ day_of_sprint }} of sprint_
@@ -1696,6 +1732,7 @@ What I'd do next: {{ next_action or "_None_" }}
 - [ ] **Step 4: Implement render_dashboard.py**
 
 `src/build_platform/render_dashboard.py`:
+
 ```python
 """Render the markdown PMO dashboard from current state."""
 from collections import Counter, defaultdict
@@ -1875,6 +1912,7 @@ git commit -m "feat(dashboard): deterministic markdown renderer from state"
 The tier-1 (Ollama) and tier-2 (Claude subagent stub) paths. Tier-2 dispatch in v1 emits an instruction file that the Claude orchestrator picks up — the subagent itself runs in the Claude session, not invoked from Python.
 
 **Files:**
+
 - Create: `src/build_platform/dispatcher.py`
 - Create: `src/build_platform/templates/tier1_executor.j2`
 - Test: `tests/test_dispatcher.py`
@@ -1882,6 +1920,7 @@ The tier-1 (Ollama) and tier-2 (Claude subagent stub) paths. Tier-2 dispatch in 
 - [ ] **Step 1: Write failing tests**
 
 `tests/test_dispatcher.py`:
+
 ```python
 """Tests for dispatcher.py."""
 from pathlib import Path
@@ -2004,6 +2043,7 @@ Expected: ImportError.
 - [ ] **Step 3: Create the tier-1 prompt template**
 
 `src/build_platform/templates/tier1_executor.j2`:
+
 ```jinja
 You are a mechanical-tier code executor. Output ONLY a unified diff. No prose. No backticks. No explanations.
 
@@ -2025,8 +2065,10 @@ You are a mechanical-tier code executor. Output ONLY a unified diff. No prose. N
 {% for path, content in files %}
 ## {{ path }}
 ```
+
 {{ content }}
-```
+
+```text
 {% endfor %}
 
 # Hard constraints
@@ -2046,6 +2088,7 @@ Apply the feedback. Retry the diff.
 - [ ] **Step 4: Implement dispatcher.py**
 
 `src/build_platform/dispatcher.py`:
+
 ```python
 """Core dispatch: tier-1 (Ollama) and tier-2 (Claude subagent brief)."""
 import re
@@ -2230,6 +2273,7 @@ git commit -m "feat(dispatcher): tier-1 Ollama path + tier-2 brief emitter"
 Each verb's Python entry point. Skills call these via `python -m build_platform.cli.<verb>`. CLI uses Click; output is structured JSON when `--json` flag set (for skill consumption), human markdown otherwise.
 
 **Files:**
+
 - Create: `src/build_platform/cli/__init__.py`
 - Create: `src/build_platform/cli/init.py`
 - Create: `src/build_platform/cli/package.py`
@@ -2244,6 +2288,7 @@ Each verb's Python entry point. Skills call these via `python -m build_platform.
 - [ ] **Step 1: Write failing tests for init CLI**
 
 `tests/test_cli_init.py`:
+
 ```python
 """Tests for cli/init.py."""
 import json
@@ -2295,9 +2340,10 @@ def test_init_creates_state_tree(tmp_path: Path):
 Run: `pytest tests/test_cli_init.py -v`
 Expected: ImportError.
 
-- [ ] **Step 3: Implement cli/__init__.py**
+- [ ] **Step 3: Implement cli/**init**.py**
 
 `src/build_platform/cli/__init__.py`:
+
 ```python
 """CLI entry points called from build-* Claude skills."""
 ```
@@ -2305,6 +2351,7 @@ Expected: ImportError.
 - [ ] **Step 4: Implement cli/init.py**
 
 `src/build_platform/cli/init.py`:
+
 ```python
 """`/build-init` entry point — scaffolds a project."""
 import json
@@ -2439,6 +2486,7 @@ Expected: 2 passed.
 - [ ] **Step 6: Implement cli/dashboard.py**
 
 `src/build_platform/cli/dashboard.py`:
+
 ```python
 """`/build-dashboard` entry point — renders current dashboard."""
 import json
@@ -2472,6 +2520,7 @@ if __name__ == "__main__":
 - [ ] **Step 7: Implement cli/status.py**
 
 `src/build_platform/cli/status.py`:
+
 ```python
 """`/build-status` entry point — read-only status query."""
 import json
@@ -2535,6 +2584,7 @@ if __name__ == "__main__":
 - [ ] **Step 8: Implement cli/package.py**
 
 `src/build_platform/cli/package.py`:
+
 ```python
 """`/build-package` entry point — add a WP. Heavy lifting is done by the Dev Orchestrator
 subagent in the Claude session; this CLI validates and writes."""
@@ -2594,6 +2644,7 @@ if __name__ == "__main__":
 - [ ] **Step 9: Implement cli/dispatch.py**
 
 `src/build_platform/cli/dispatch.py`:
+
 ```python
 """`/build-dispatch` entry point — execute a WP via tier-1 (Ollama) or tier-2 (Claude brief)."""
 import json
@@ -2704,6 +2755,7 @@ if __name__ == "__main__":
 - [ ] **Step 10: Implement cli/decision.py**
 
 `src/build_platform/cli/decision.py`:
+
 ```python
 """`/build-decision` entry point — append a decision to decisions.md."""
 import json
@@ -2762,6 +2814,7 @@ if __name__ == "__main__":
 - [ ] **Step 11: Implement cli/scrum.py**
 
 `src/build_platform/cli/scrum.py`:
+
 ```python
 """`/build-scrum` entry point — assemble the scrum brief and recap stub.
 
@@ -2851,6 +2904,7 @@ if __name__ == "__main__":
 - [ ] **Step 12: Write failing tests for dispatch CLI**
 
 `tests/test_cli_dispatch.py`:
+
 ```python
 """Tests for cli/dispatch.py with Ollama mocked."""
 import json
@@ -2942,6 +2996,7 @@ git commit -m "feat(cli): /build-* entry points (init, package, dispatch, scrum,
 8 markdown files under `agents/`. Identical structure, different missions. v1 ships static; v2 may template these.
 
 **Files:**
+
 - Create: `agents/build-pmo-lead.md`
 - Create: `agents/build-dev-orchestrator.md`
 - Create: `agents/build-product-owner.md`
@@ -2954,6 +3009,7 @@ git commit -m "feat(cli): /build-* entry points (init, package, dispatch, scrum,
 - [ ] **Step 1: Create build-pmo-lead.md**
 
 `agents/build-pmo-lead.md`:
+
 ```markdown
 ---
 name: build-pmo-lead
@@ -2973,8 +3029,10 @@ Drive delivery for the active BRAINS Build Platform project. You are the standin
 # Outputs you must produce
 For a scrum: fill in the five sections in the recap stub — Progress, Blockers, Velocity, Re-prioritization, Next up. After filling in, refresh the dashboard by running:
 ```
+
 python -m build_platform.cli.dashboard --root <project-root>
-```
+
+```text
 
 For ad-hoc status: a one-screen summary; do not edit state without the user's instruction.
 
@@ -2998,6 +3056,7 @@ In any of these cases, the recap leads with a `[USER ACTION]` block proposing co
 - [ ] **Step 2: Create build-dev-orchestrator.md**
 
 `agents/build-dev-orchestrator.md`:
+
 ```markdown
 ---
 name: build-dev-orchestrator
@@ -3045,6 +3104,7 @@ When reviewing a tier-1 diff: a verdict of **approve** / **request changes** / *
 - [ ] **Step 3: Create build-product-owner.md**
 
 `agents/build-product-owner.md`:
+
 ```markdown
 ---
 name: build-product-owner
@@ -3077,6 +3137,7 @@ For decisions: the structured entry with Owner, Decision, Why, Alternatives, Rel
 - [ ] **Step 4: Create build-frontend-sme.md**
 
 `agents/build-frontend-sme.md`:
+
 ```markdown
 ---
 name: build-frontend-sme
@@ -3101,13 +3162,16 @@ You are spawned for a single WP. Your tier-2 brief is at `.brains-build/runs/<wp
 
 # Output (always at end of run)
 ```
+
 ## Result for WP-XXXX
+
 - **Files changed:** [list]
 - **Decisions:** [list, or "_None_"]
 - **Tests run:** [command + result summary]
 - **Blockers:** [list, or "_None_"]
 - **Handoff notes:** [anything QA/Security need to know]
-```
+
+```text
 
 # Rules of engagement
 1. Touch only the files in scope unless the spec explicitly authorizes more.
@@ -3120,6 +3184,7 @@ You are spawned for a single WP. Your tier-2 brief is at `.brains-build/runs/<wp
 - [ ] **Step 5: Create build-backend-sme.md**
 
 `agents/build-backend-sme.md`:
+
 ```markdown
 ---
 name: build-backend-sme
@@ -3144,13 +3209,16 @@ You are spawned for a single WP. Your tier-2 brief is at `.brains-build/runs/<wp
 
 # Output
 ```
+
 ## Result for WP-XXXX
+
 - **Files changed:** [list]
 - **Decisions:** [list]
 - **Tests run:** [command + result summary]
 - **Blockers:** [list]
 - **Handoff notes:** [for QA/Security]
-```
+
+```text
 
 # Rules of engagement
 1. Touch only files in scope.
@@ -3162,6 +3230,7 @@ You are spawned for a single WP. Your tier-2 brief is at `.brains-build/runs/<wp
 - [ ] **Step 6: Create build-qa-sme.md**
 
 `agents/build-qa-sme.md`:
+
 ```markdown
 ---
 name: build-qa-sme
@@ -3185,12 +3254,15 @@ Verify acceptance. After a tier-1 or tier-2 dispatch, you run the project's test
 
 # Output
 ```
+
 ## QA verdict for WP-XXXX
+
 - **Verdict:** pass | fail
 - **Tests run:** [command + summary]
 - **Acceptance coverage:** [criterion → test mapping]
 - **Notes:** [...]
-```
+
+```text
 
 # Rules of engagement
 1. Acceptance criteria are non-negotiable. If one can't be verified, verdict = fail.
@@ -3202,6 +3274,7 @@ Verify acceptance. After a tier-1 or tier-2 dispatch, you run the project's test
 - [ ] **Step 7: Create build-security-sme.md**
 
 `agents/build-security-sme.md`:
+
 ```markdown
 ---
 name: build-security-sme
@@ -3224,11 +3297,14 @@ Audit, do not modify. Catch security issues before they merge.
 
 # Output
 ```
+
 ## Security verdict for WP-XXXX
+
 - **Verdict:** clear | advisory | block
 - **Findings:** [list, each with severity + suggested fix]
 - **Audit commands run:** [list]
-```
+
+```text
 
 # Rules of engagement
 1. Read-only. Do not modify code. Suggest fixes; do not apply them.
@@ -3241,6 +3317,7 @@ Audit, do not modify. Catch security issues before they merge.
 - [ ] **Step 8: Create build-devops-sme.md**
 
 `agents/build-devops-sme.md`:
+
 ```markdown
 ---
 name: build-devops-sme
@@ -3263,12 +3340,15 @@ Spawned for a single WP tagged for devops. Brief at `.brains-build/runs/<wp-id>/
 
 # Output
 ```
+
 ## Result for WP-XXXX
+
 - **Files changed:** [list]
 - **Validators run:** [list]
 - **Rollback procedure:** [...]
 - **Blockers:** [list]
-```
+
+```text
 
 # Rules of engagement
 1. Do not introduce secrets in config files.
@@ -3296,6 +3376,7 @@ git commit -m "feat(agents): 8 subagent definitions (3 leadership + 5 executor S
 8 SKILL.md files. Each is a thin orchestration document that names the right CLI command and the right subagents to spawn.
 
 **Files:**
+
 - Create: `skills/build-platform/SKILL.md`
 - Create: `skills/build-init/SKILL.md`
 - Create: `skills/build-package/SKILL.md`
@@ -3308,6 +3389,7 @@ git commit -m "feat(agents): 8 subagent definitions (3 leadership + 5 executor S
 - [ ] **Step 1: Create skills/build-platform/SKILL.md (master router)**
 
 `skills/build-platform/SKILL.md`:
+
 ```markdown
 ---
 name: build-platform
@@ -3371,6 +3453,7 @@ The active build project's root is wherever `.brains-build/` is found by walking
 - [ ] **Step 2: Create skills/build-init/SKILL.md**
 
 `skills/build-init/SKILL.md`:
+
 ```markdown
 ---
 name: build-init
@@ -3405,7 +3488,7 @@ python -m build_platform.cli.init `
   --json
 ```
 
-6. **Print the next-step block** (returned by the CLI), including the exact `ollama pull` commands.
+1. **Print the next-step block** (returned by the CLI), including the exact `ollama pull` commands.
 
 ## What the CLI writes
 
@@ -3420,7 +3503,8 @@ python -m build_platform.cli.init `
 
 - Don't write any of these files directly via Write/Edit. Always go through the CLI so schema validation runs.
 - Don't skip the Product Owner spawn even when inputs look clean — they shape the YAML, you don't.
-```
+
+```text
 
 - [ ] **Step 3: Create skills/build-package/SKILL.md**
 
@@ -3455,7 +3539,7 @@ python -m build_platform.cli.package `
   --json
 ```
 
-6. **Refresh dashboard:**
+1. **Refresh dashboard:**
 
 ```powershell
 python -m build_platform.cli.dashboard --root . --json
@@ -3464,6 +3548,7 @@ python -m build_platform.cli.dashboard --root . --json
 ## Tier-1 checklist (Dev Orch enforces)
 
 A WP is tier-1 ONLY if:
+
 1. Touches ≤ 3 files, total < 50KB
 2. Single well-defined transformation
 3. Acceptance is objectively checkable
@@ -3474,7 +3559,8 @@ Anything failing one criterion is tier-2.
 ## Don't
 
 - Don't append to work-packages.jsonl directly. The CLI handles schema validation, id assignment, and tier-1 checks.
-```
+
+```text
 
 - [ ] **Step 4: Create skills/build-dispatch/SKILL.md**
 
@@ -3496,14 +3582,16 @@ description: Execute a work package. Tier-1 routes through Ollama and Dev Orches
 python -m build_platform.cli.dispatch --root . --wp WP-XXXX --json
 ```
 
-3. The CLI returns one of two shapes:
+1. The CLI returns one of two shapes:
 
 ### Tier-1 (Ollama) response
+
 ```json
 { "ok": true, "wp_id": "WP-X", "tier": 1, "diff": "<path>", "next": "review and apply" }
 ```
 
 What you do:
+
 - Read the diff at the returned path.
 - Spawn `build-dev-orchestrator` to review the diff against the WP spec.
 - Verdict cases:
@@ -3512,11 +3600,13 @@ What you do:
   - **reject** → re-tag the WP as tier-2 via a new `/build-package` invocation; mark the current WP as blocked.
 
 ### Tier-2 (Claude subagent) response
+
 ```json
 { "ok": true, "wp_id": "WP-X", "tier": 2, "brief": "<path>", "next": "Spawn <persona> subagent with this brief" }
 ```
 
 What you do:
+
 - Read the brief.
 - Spawn the named executor persona subagent (e.g., `build-backend-sme`) with the brief path as its primary input.
 - When the subagent returns its Result block, spawn `build-qa-sme` to verify acceptance.
@@ -3535,7 +3625,8 @@ python -m build_platform.cli.dashboard --root . --json
 - Don't apply diffs without Dev Orch review.
 - Don't mark `done` without QA verdict.
 - Don't skip Security on sensitive WPs.
-```
+
+```text
 
 - [ ] **Step 5: Create skills/build-scrum/SKILL.md**
 
@@ -3558,25 +3649,26 @@ python -m build_platform.cli.scrum --root . --json
 
 This writes a recap stub at `.brains-build/sprints/sprint-NN.md` with the raw diff embedded and five sections to fill in.
 
-2. **Spawn `build-pmo-lead`** with:
+1. **Spawn `build-pmo-lead`** with:
    - Path to the recap stub
    - Path to `.brains-build/` for direct reads (project.yml, deliverables, work-packages, audit/)
 
 PMO Lead fills in: Progress, Blockers, Velocity, Re-prioritization, Next up — and surfaces any `[USER ACTION]` blocks at the top.
 
-3. **PMO Lead refreshes the dashboard:**
+1. **PMO Lead refreshes the dashboard:**
 
 ```powershell
 python -m build_platform.cli.dashboard --root . --json
 ```
 
-4. **Print a one-screen summary** of the recap to the user — pull from the recap file. Lead with `[USER ACTION]` blocks if any.
+1. **Print a one-screen summary** of the recap to the user — pull from the recap file. Lead with `[USER ACTION]` blocks if any.
 
 ## Don't
 
 - Don't write the recap manually. Always spawn `build-pmo-lead`.
 - Don't trust executor self-reports — PMO Lead must read `audit/` files for evidence.
-```
+
+```text
 
 - [ ] **Step 6: Create skills/build-status/SKILL.md**
 
@@ -3597,11 +3689,13 @@ python -m build_platform.cli.status --root . --json
 ```
 
 For a specific WP:
+
 ```powershell
 python -m build_platform.cli.status --root . --wp WP-XXXX --json
 ```
 
 For a specific persona's activity: grep the audit files.
+
 ```powershell
 Get-ChildItem .brains-build\audit\*.md | Select-String -Pattern "Persona:.*<persona-id>"
 ```
@@ -3609,7 +3703,8 @@ Get-ChildItem .brains-build\audit\*.md | Select-String -Pattern "Persona:.*<pers
 ## Output
 
 Always quote concrete values from the CLI output. Don't paraphrase the JSON shape; show counts.
-```
+
+```text
 
 - [ ] **Step 7: Create skills/build-decision/SKILL.md**
 
@@ -3648,7 +3743,8 @@ python -m build_platform.cli.decision --root . `
 ## Don't
 
 - Don't write to `decisions.md` directly. The CLI enforces format.
-```
+
+```text
 
 - [ ] **Step 8: Create skills/build-dashboard/SKILL.md**
 
@@ -3672,7 +3768,8 @@ The CLI writes `.brains-build/dashboards/current.md` and prints its path. Quote 
 ## Don't
 
 - Don't write directly to `current.md`. The renderer is deterministic; manual edits get overwritten on next refresh.
-```
+
+```text
 
 - [ ] **Step 9: Verify all 8 SKILL.md files exist**
 
@@ -3693,11 +3790,13 @@ git commit -m "feat(skills): 8 build-* skills (master router + 7 verbs)"
 Copies skills/agents to the right Claude config locations and installs the Python package.
 
 **Files:**
+
 - Create: `install.ps1`
 
 - [ ] **Step 1: Write install.ps1**
 
 `install.ps1`:
+
 ```powershell
 # install.ps1 — install BRAINS Build Platform into ~/.claude/
 # Run from c:\BRAINS_Build_Platform\
@@ -3744,17 +3843,21 @@ Write-Output "  3. cd to a project directory and run /build-init in Claude Code"
 - [ ] **Step 2: Test install (dry-run by inspecting paths)**
 
 Run:
+
 ```powershell
 cd c:\BRAINS_Build_Platform
 .\install.ps1
 ```
+
 Expected: prints "installed skill: build-platform" through "installed agent: build-devops-sme", then "Done."
 
 Verify:
+
 ```powershell
 ls "$env:USERPROFILE\.claude\skills\build-platform"
 ls "$env:USERPROFILE\.claude\agents\build"
 ```
+
 Expected: SKILL.md present for build-platform; 8 .md files in agents/build/.
 
 - [ ] **Step 3: Commit**
@@ -3771,11 +3874,13 @@ git commit -m "feat(install): PowerShell installer for skills + agents + python 
 Wire it all together against a real (small) project. Demonstrates the v1 acceptance criteria.
 
 **Files:**
+
 - Create: `tests/test_end_to_end.py`
 
 - [ ] **Step 1: Write the smoke test**
 
 `tests/test_end_to_end.py`:
+
 ```python
 """End-to-end smoke test that mirrors the v1 acceptance criteria from the spec."""
 import json
@@ -3959,7 +4064,8 @@ Then `/build-package`, `/build-dispatch`, `/build-scrum`, `/build-dashboard`.
 ```powershell
 pytest
 ```
-```
+
+```text
 
 - [ ] **Step 2: Commit and tag**
 
@@ -3976,6 +4082,7 @@ git tag v0.1.0
 After writing this plan, check it against the spec section-by-section:
 
 **Spec coverage check:**
+
 - §1 Overview: covered by Goal/Architecture statement above.
 - §2 Scope (in/out): every "in scope" item maps to a task — skill family (T12), 8 subagents (T11), Python package (T0–T9), state model (T2–T3), Ollama tier-1 + Claude tier-2 (T6, T9, T10), manual scrum (T10 cli/scrum), markdown dashboard (T8), decision log (T10 cli/decision), audit trail (T4), single active project (paths.py in T1). v2 backlog items are explicitly absent from tasks. ✓
 - §3 Architecture: three-tier shape implemented across T0–T12. ✓
@@ -3992,7 +4099,7 @@ After writing this plan, check it against the spec section-by-section:
 
 **Type consistency:** `WorkPackage.tier` is `WPTier` enum (1, 2) throughout. `WorkPackage.state` is `WPState` enum. CLI commands use the same field names as schemas. ✓
 
-**Spec gap found and fixed inline:** Task 10 cli/scrum produces a recap *stub* that the PMO Lead subagent fills in — this is consistent with §5.4 of the spec but adds an implementation detail (separate file write) that wasn't explicit. Acceptable; clarifies the Claude-vs-Python boundary.
+**Spec gap found and fixed inline:** Task 10 cli/scrum produces a recap _stub_ that the PMO Lead subagent fills in — this is consistent with §5.4 of the spec but adds an implementation detail (separate file write) that wasn't explicit. Acceptable; clarifies the Claude-vs-Python boundary.
 
 ---
 

@@ -27,8 +27,8 @@ python -m build_platform.cli.schedule_scrum `
 
 The CLI returns a JSON payload with `cron`, `routine_prompt`, and project metadata.
 
-4. **Hand off to the `schedule` skill.** Invoke the `schedule` skill with the returned `cron` expression and `routine_prompt`. The user's `schedule` skill creates the actual remote routine on Claude's cron infrastructure.
-5. **Record the routine id.** Once `/schedule` returns a routine id (e.g., `rtn-abc-123`), re-run the CLI to persist it:
+1. **Hand off to the `schedule` skill.** Invoke the `schedule` skill with the returned `cron` expression and `routine_prompt`. The user's `schedule` skill creates the actual remote routine on Claude's cron infrastructure.
+2. **Record the routine id.** Once `/schedule` returns a routine id (e.g., `rtn-abc-123`), re-run the CLI to persist it:
 
 ```powershell
 python -m build_platform.cli.schedule_scrum `
@@ -37,11 +37,12 @@ python -m build_platform.cli.schedule_scrum `
   --json
 ```
 
-6. **Confirm to the user**: routine is registered, will fire weekly per the schedule, and reminds them via push notification to open Claude Code and run `/build-scrum`.
+1. **Confirm to the user**: routine is registered, will fire weekly per the schedule, and reminds them via push notification to open Claude Code and run `/build-scrum`.
 
 ## Why the routine only sends a reminder
 
 Remote routines created by `/schedule` execute in Claude's cloud. They cannot read the local `.brains-build/` directory on the user's machine, so they cannot:
+
 - Generate the scrum recap stub (requires local state files)
 - Spawn the PMO Lead with project context (requires local state files)
 - Refresh the dashboard (writes to a local file)

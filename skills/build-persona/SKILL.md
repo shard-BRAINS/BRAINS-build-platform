@@ -20,6 +20,7 @@ python -m build_platform.cli.persona register `
 ```
 
 **Options:**
+
 - `--id` — must start with `build-` and use lowercase + hyphens (e.g. `build-data-sme`).
 - `--tier` — `leadership` (Opus, broad tools), `executor` (Sonnet, write tools), or `read-only` (Sonnet, no write).
 - `--description` — one-liner Claude uses for skill-matching.

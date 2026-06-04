@@ -38,7 +38,7 @@ Pass `--autonomy` per WP. Default is `manual` (safest).
 
 Dev Orch picks the autonomy mode based on user intent. If the user hasn't expressed a preference, default to `manual`. Suggest `auto` only when the user has explicitly opted into unattended execution AND the WP is mechanical (passes tier-1 heuristic).
 
-6. **Refresh dashboard:**
+1. **Refresh dashboard:**
 
 ```powershell
 python -m build_platform.cli.dashboard --root . --json
@@ -47,6 +47,7 @@ python -m build_platform.cli.dashboard --root . --json
 ## Tier-1 checklist (Dev Orch enforces)
 
 A WP is tier-1 ONLY if:
+
 1. Touches ≤ 3 files, total < 50KB
 2. Single well-defined transformation
 3. Acceptance is objectively checkable

@@ -30,7 +30,8 @@
 **Where:** `src/build_platform/dispatcher.py::validate_diff` (structural check too loose).
 
 **Reproduction:** Triage + package + dispatch a clean tier-1 WP. `qwen2.5-coder:7b` produced this diff:
-```
+
+```text
 --- a/src/build_platform/schemas.py
 +++ b/src/build_platform/schemas.py
 @@ -21,6 +21,7 @@ class WPState(str, Enum):
@@ -52,6 +53,7 @@ Structurally valid: has `--- a/`, `+++ b/`, `@@ ... @@`, hunk content. `validate
 **Tests:** 4 new — apply-check returns True for non-git dir, detects bad hunk header in real git repo, accepts well-formed diff, end-to-end retry-on-bad-then-good behavior.
 
 **Demo trace** of the actual re-dogfood loop after the fix:
+
 1. `triage --spec "Add ..." --file schemas.py --accept "..."` → suggested tier-1, all four criteria pass.
 2. `package --tier 1 --file schemas.py ...` → WP-0006 created cleanly.
 3. `dispatch --wp WP-0006` → Ollama produced the bad-hunk-counts diff; with the new check, the dispatcher would now reject + retry with concrete feedback (instead of writing it to disk).
@@ -95,13 +97,15 @@ Severity scale: **critical** = blocks platform from being used safely · **impor
 **Severity:** critical
 **Where:** `src/build_platform/dispatcher.py::validate_diff`
 **Reproduction:** Ollama returned this WP-0001 output:
-```
+
+```text
 \`\`\`diff
 --- a/src/build_platform/github_mirror.py
 +++ b/src/build_platform/github_mirror.py
 @@ ...
 \`\`\`
 ```
+
 `_DIFF_HEADER`, `_DIFF_HEADER_PLUS`, and `_DIFF_HUNK` regexes all use `MULTILINE` and find the headers inside the fences. Validation passes. The diff is then written verbatim to `proposed.diff` — `git apply` would fail because of the leading/trailing fence lines.
 
 **Fix:** add a structural check that the diff content (stripped of leading whitespace) **starts** with `---` and **ends** with a hunk line. Strip ` ```diff ` / ` ``` ` wrappers before validation, OR reject them.
@@ -129,6 +133,7 @@ Severity scale: **critical** = blocks platform from being used safely · **impor
 **Why this matters:** `validate_diff` only checks structure (headers, hunks, allowed files). Semantic correctness depends on the Dev Orchestrator review subagent, which means tier-1 ALWAYS needs Claude review — the "cheap mechanical" promise has a hidden Claude-review tax.
 
 **Fix:** This is partly a model-capability issue (qwen2.5-coder:7b is small). Two mitigations:
+
 - Improve tier-1 prompt (Finding #3) so model has fewer chances to invent semantics.
 - Document explicitly that tier-1 saves Claude tokens *for code generation*, not for review. Reviews are always Claude.
 
@@ -141,6 +146,7 @@ Severity scale: **critical** = blocks platform from being used safely · **impor
 **Reproduction:** Running `mirror push` to a live public repo triggered Claude Code's safety classifier — correctly. But there's no `--dry-run` to preview *what would be pushed* before committing.
 
 **Fix:** add `--dry-run` to `mirror push` that:
+
 - Resolves what labels would be seeded, what milestones would be created/reused, what issues would be created/edited
 - Outputs a JSON preview
 - Does NOT call gh
@@ -175,6 +181,7 @@ This makes the public-state-change action two-step by default, which matches how
 **Severity:** important
 **Where:** missing — `build-dispatch` SKILL.md says "approve → apply the diff with `git apply <path>`" but there's no platform verb.
 **Reproduction:** After Dev Orch approves a diff, the user is told to run `git apply runs/WP-X/proposed.diff` manually. No platform verb:
+
 - Validates the diff applies cleanly (`git apply --check`)
 - Handles partial application / conflicts
 - Runs the project's test command after apply
@@ -217,10 +224,10 @@ In priority order:
 
 ## Slower wins
 
-6. **Finding 7** (`package edit` verb) — needed but bigger surface (every field becomes a flag).
-7. **Finding 5** (`mirror push --dry-run`) — small but useful.
-8. **Finding 9** (subagent-install preflight in dispatch) — small.
-9. **Finding 6** (visual blocked state on GitHub) — cosmetic.
+1. **Finding 7** (`package edit` verb) — needed but bigger surface (every field becomes a flag).
+2. **Finding 5** (`mirror push --dry-run`) — small but useful.
+3. **Finding 9** (subagent-install preflight in dispatch) — small.
+4. **Finding 6** (visual blocked state on GitHub) — cosmetic.
 
 ## What worked
 

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD041 (brand banner starts with a centered HTML block) -->
 <div align="center">
 
 <picture>
@@ -7,7 +8,8 @@
 
 # BRAINS Build Platform
 
-### Agentic end-to-end software delivery, built under the BRAINS umbrella.
+<!-- markdownlint-disable-next-line MD001 (intentional tagline subtitle) -->
+### Agentic end-to-end software delivery, built under the BRAINS umbrella
 
 <br />
 
@@ -229,7 +231,7 @@ Log decisions through `/build-decision`. Make read-only queries through `/build-
 
 ## What's in the repo
 
-```
+```text
 BRAINS-build-platform/
 ├── src/build_platform/          # Python package
 │   ├── schemas.py · state.py    # Pydantic models + read/write/validate
@@ -262,7 +264,7 @@ Per-project state lives in `.brains-build/` inside the project you're building, 
 .venv\Scripts\python -m pytest
 ```
 
-```
+```text
 270 passed in ~11 seconds
 ```
 

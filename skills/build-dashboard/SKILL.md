@@ -14,6 +14,7 @@ python -m build_platform.cli.dashboard --root . --json
 By default this writes both `current.md` and `current.html` under `.brains-build/dashboards/`. Markdown is canonical; HTML is the visual view for browser sharing.
 
 To pick a format explicitly:
+
 ```powershell
 python -m build_platform.cli.dashboard --root . --format md --json    # markdown only
 python -m build_platform.cli.dashboard --root . --format html --json  # HTML only

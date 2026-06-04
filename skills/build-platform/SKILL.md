@@ -43,6 +43,7 @@ All project state lives in `.brains-build/` in the project root. Files are canon
 ## Persona dispatch
 
 The 9 personas are subagent definitions in `~/.claude/agents/build/`. Spawn them via the `Agent` tool when a verb's flow calls for it:
+
 - Leadership tier (`build-pmo-lead`, `build-dev-orchestrator`, `build-product-owner`) — `claude-opus-4-7`.
 - Executor tier (`build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`) — `claude-sonnet-4-6`.
 

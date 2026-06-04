@@ -43,6 +43,7 @@ Severity scale matches the previous dogfood: critical · important · minor · i
 **Likely cause:** the Agent tool's general-purpose subagent runs with a constrained working-directory permission model. Writes outside its perceived working dir get refused. `.brains-build/runs/` is technically inside the project root but the subagent's notion of "working dir" may not include the dogfood project.
 
 **Fix options:**
+
 1. **Update tier-2 brief template** to instruct executors: "Return deliverables in your final response (markdown). The orchestrator will persist them to the right path." Remove the "write to runs/..." instruction.
 2. Have the dispatcher pass a write-target path that's explicitly in the subagent's writable scope (less control over location).
 3. Add an "ingest_subagent_output" verb that takes a final-response string and writes it to `runs/<wp-id>/<name>.md` — making persistence an orchestrator-side action.
@@ -58,6 +59,7 @@ Option 1 is simplest and matches what already happens: the subagent's "Result bl
 **Where:** target codebase (`shard-BRAINS/brains-website`) vs. BRAINS brand standards.
 
 **Detail:**
+
 - Brand standards spec: `#FCC14D` (Gold, decorative) + `#D99518` (Gold Deep, text-on-white).
 - Source code uses: `#f5c14e` (Gold) + `#e2a82a` / `#b88313` (Gold Deep variants).
 - Neither standard token appears in source. Neither source token appears in the brand standards.
