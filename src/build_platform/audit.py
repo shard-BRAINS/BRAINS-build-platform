@@ -4,7 +4,7 @@ from pathlib import Path
 from importlib.resources import files
 from typing import Literal
 
-from jinja2 import Template
+from jinja2 import Template, select_autoescape
 from pydantic import BaseModel, Field
 
 from build_platform.paths import state_dir
@@ -32,7 +32,7 @@ class AuditEntry(BaseModel):
 
 def _template() -> Template:
     src = files("build_platform.templates").joinpath("audit_entry.md.j2").read_text(encoding="utf-8")
-    return Template(src, keep_trailing_newline=True)
+    return Template(src, autoescape=select_autoescape(), keep_trailing_newline=True)
 
 
 def write_audit(project_root: Path, entry: AuditEntry) -> Path:

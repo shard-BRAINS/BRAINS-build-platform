@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from importlib.resources import files
 from pathlib import Path
 
-from jinja2 import Template
+from jinja2 import Template, select_autoescape
 
 from build_platform.audit import load_audit_index
 from build_platform.paths import state_dir
@@ -19,7 +19,7 @@ from build_platform.state import (
 
 def _template(filename: str = "dashboard.md.j2") -> Template:
     src = files("build_platform.templates").joinpath(filename).read_text(encoding="utf-8")
-    return Template(src, keep_trailing_newline=True)
+    return Template(src, autoescape=select_autoescape(), keep_trailing_newline=True)
 
 
 def _sprint_number(project_root: Path) -> int:
