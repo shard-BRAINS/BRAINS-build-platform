@@ -38,11 +38,12 @@ Severity scale matches the previous dogfood: critical · important · minor · i
 
 **Reproduction:** the spawned `build-security-sme` subagent followed the brief but its harness refused the file write to `c:\brains-website-dogfood\.brains-build\runs\WP-0001\findings.md`. Subagent reported: "The harness blocks writing findings to disk; the brief asked for a file, but I'll return the findings inline as the harness directs." Returned the audit content inline in its final response instead.
 
-**Why it matters:** the platform's auditability invariant depends on `runs/<wp-id>/` capturing per-dispatch artifacts. If subagents can't write there, the orchestrator has to mirror their final response into the file system — adding a step that's easy to forget and breaks the "audit-from-disk" promise.
+**Why it matters:** the platform's auditability invariant depends on `runs/<wp-id>/` capturing per-dispatch artifacts. If subagents can't write there, the orchestrator has to mirror their final response into the file system — adding a step that is often forgotten and breaks the "audit-from-disk" promise.
 
 **Likely cause:** the Agent tool's general-purpose subagent runs with a constrained working-directory permission model. Writes outside its perceived working dir get refused. `.brains-build/runs/` is technically inside the project root but the subagent's notion of "working dir" may not include the dogfood project.
 
 **Fix options:**
+
 1. **Update tier-2 brief template** to instruct executors: "Return deliverables in your final response (markdown). The orchestrator will persist them to the right path." Remove the "write to runs/..." instruction.
 2. Have the dispatcher pass a write-target path that's explicitly in the subagent's writable scope (less control over location).
 3. Add an "ingest_subagent_output" verb that takes a final-response string and writes it to `runs/<wp-id>/<name>.md` — making persistence an orchestrator-side action.
@@ -58,6 +59,7 @@ Option 1 is simplest and matches what already happens: the subagent's "Result bl
 **Where:** target codebase (`shard-BRAINS/brains-website`) vs. BRAINS brand standards.
 
 **Detail:**
+
 - Brand standards spec: `#FCC14D` (Gold, decorative) + `#D99518` (Gold Deep, text-on-white).
 - Source code uses: `#f5c14e` (Gold) + `#e2a82a` / `#b88313` (Gold Deep variants).
 - Neither standard token appears in source. Neither source token appears in the brand standards.
@@ -76,7 +78,7 @@ Option 1 is simplest and matches what already happens: the subagent's "Result bl
 
 **Fix:** `/build-init` could optionally add `.brains-build/` to the target repo's `.gitignore` based on a CLI flag (`--gitignore-state` default true, or `--no-gitignore-state` opt-out). Or just print a one-line tip at the end of init output: "Tip: consider adding `.brains-build/` to your project's .gitignore — or commit it to share state with your team."
 
-**Severity:** minor — the user can do this themselves. But it's an obvious-in-hindsight footgun.
+**Severity:** minor — the user can do this themselves. But it's a footgun that is clear in hindsight.
 
 ---
 

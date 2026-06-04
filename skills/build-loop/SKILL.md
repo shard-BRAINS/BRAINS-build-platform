@@ -41,6 +41,7 @@ python -m build_platform.cli.loop --root . --limit 5 --json
 ```
 
 The CLI:
+
 1. Dispatches each WP via the existing tier-1 path (Ollama → diff validation → `git apply --check`).
 2. On a clean diff, immediately runs `dispatch_apply` (which `git apply`s, runs the project's test command, transitions state).
 3. Stops on the first failure — the failing WP is left `blocked` with audit entry.

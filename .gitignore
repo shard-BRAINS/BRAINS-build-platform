@@ -9,3 +9,8 @@ build/
 .ruff_cache/
 .claude/
 Backog_Items_MG.md
+
+# Vale: downloaded style packages (synced via `vale sync`)
+.vale/styles/write-good/
+.vale/styles/alex/
+.vale/styles/RedHat/

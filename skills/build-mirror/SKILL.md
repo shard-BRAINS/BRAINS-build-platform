@@ -1,6 +1,6 @@
 ---
 name: build-mirror
-description: One-way push mirror of the active project's WPs and sprints to GitHub Issues + Milestones. Use when the user wants work packages visible in GitHub (so dev teams can see/comment on them), or asks "sync to GitHub", "push to GitHub", "mirror this build". Three subcommands: init, push, status.
+description: 'One-way push mirror of the active project''s WPs and sprints to GitHub Issues + Milestones. Use when the user wants work packages visible in GitHub (so dev teams can see/comment on them), or asks "sync to GitHub", "push to GitHub", "mirror this build". Three subcommands: init, push, status.'
 ---
 
 # Mirror local state to GitHub
@@ -49,6 +49,7 @@ python -m build_platform.cli.mirror push --root . --dry-run --json   # preview o
 `--dry-run` makes NO state-changing gh calls (no label create, no issue create/edit/close/reopen, no milestone create). Read-only probes still run so the plan can show which labels/milestones already exist vs. need creating. Use this before any first push to a public repo — the output enumerates exactly what would land.
 
 Idempotent. On first run:
+
 1. Ensures all platform labels exist on the remote (one-time seed).
 2. For each `sprints/sprint-NN.md`, ensures a matching milestone exists.
 3. For each WP, creates an issue (or edits the existing one if mapped).
@@ -74,7 +75,8 @@ For each WP currently mapped to an issue:
 2. **Decision ingestion.** Fetches comments via the REST API (gh issue view doesn't return comment ids). Any comment whose **first line is `bbp:decision`** is parsed and appended to `decisions.md`. Idempotent via `mirror_map.seen_comments[issue_number_str]` — second pull with the same comments is a no-op.
 
 Expected `bbp:decision` comment format:
-```
+
+```text
 bbp:decision
 title: <one-line decision title>
 owner: <persona id or user:name>
@@ -87,6 +89,7 @@ related-wp: WP-XXXX, WP-YYYY                            (optional)
 Required fields: `title` and `decision`. Missing either → the comment is ignored.
 
 **Output:**
+
 ```json
 {
   "ok": true,
@@ -98,6 +101,7 @@ Required fields: `title` and `decision`. Missing either → the comment is ignor
 ```
 
 **When to pull:**
+
 - After a teammate closes a mirrored issue on GitHub (signals the WP is done).
 - After a teammate posts a `bbp:decision` comment that should land in `decisions.md`.
 - Periodically as part of a cadence (could be wired up via `/build-schedule-scrum`-style routine in a future verb).

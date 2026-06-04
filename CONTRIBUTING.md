@@ -88,6 +88,7 @@ The `agents/build-*.md` files are subagent definitions Claude Code spawns via th
 ## Reporting bugs
 
 Open an issue with:
+
 - What you ran (exact command).
 - What you expected.
 - What happened (exit code, output, audit entry if any).

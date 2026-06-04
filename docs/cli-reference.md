@@ -37,7 +37,7 @@ python -m build_platform.cli.init `
 
 **Writes:** `.brains-build/project.yml`, `deliverables.yml`, `workstreams.yml` (5 default workstreams), `config.yml`, empty `work-packages.jsonl`, seeded `decisions.md`.
 
-**Exit codes:** `0` success · `1` already initialized · `2` invalid deliverable format.
+**Exit codes:** `0` success · `1` already initialized · `2` malformed deliverable format.
 
 ---
 
@@ -112,12 +112,14 @@ python -m build_platform.cli.triage --root . `
 Either `--wp` OR (`--spec` + others) is required.
 
 **Heuristic** (all four must pass for tier-1):
+
 1. **Scope** — ≤ 3 files AND total file size < 50KB (existing files only; new-file scaffolds count as 0 bytes).
 2. **Mechanical verb** — spec starts with one of: `rename, format, bump, scaffold, refactor, replace, doc edit, add field, remove field, extract, inline, delete unused, add import, remove import`. Plus a softer match on leading `add/remove/delete`.
 3. **No design keywords** — spec contains none of: `design, architecture, decide, decision, approach, evaluate, research, investigate, explore, should we, what if, choose between, trade-off`.
 4. **Objective acceptance** — every criterion mentions: `test, lint, pass, fail, compile, match, return, exit, file exists, file contains, regex, diff, succeeds, output, 0 errors, no errors`.
 
 **Output (--wp mode):**
+
 ```json
 {
   "wp_id": "WP-0001",
@@ -155,6 +157,7 @@ python -m build_platform.cli.package_edit --root . --wp WP-0001 --add-dep WP-000
 **Editable fields:** `title`, `workstream`, `deliverable_id` (`--deliverable`), `tier`, `executor_persona` (`--executor`), `spec`.
 
 **Editable lists** (use add/remove pairs, repeatable):
+
 - `spec_files` — `--add-file PATH` / `--remove-file PATH`
 - `acceptance` — `--add-accept TEXT` / `--remove-accept TEXT`
 - `depends_on` — `--add-dep WP-X` / `--remove-dep WP-X`
@@ -163,10 +166,12 @@ python -m build_platform.cli.package_edit --root . --wp WP-0001 --add-dep WP-000
 **NOT editable:** `id`, `created_by`, `created_at`, `state`, `history`. State has its own transition paths (`dispatch`, `dispatch_apply`, `dispatch_reject`).
 
 **Validation:**
+
 - `--add-dep` rejects WP IDs that don't exist (same as `package` CLI).
 - If the WP would end up tier-1 with > 3 files after the edit, the edit is refused.
 
 **Output:**
+
 ```json
 {
   "ok": true,
@@ -197,6 +202,7 @@ python -m build_platform.cli.dispatch --root . --wp WP-0042 --json
 **Preconditions:** WP must be in state `defined`. All `depends_on` WPs must be in state `done`. For tier-1, Ollama must be reachable AND `tier1_default` + `summarizer` models must be pulled.
 
 **Output — tier-1:**
+
 ```json
 {
   "ok": true,
@@ -208,6 +214,7 @@ python -m build_platform.cli.dispatch --root . --wp WP-0042 --json
 ```
 
 **Output — tier-2:**
+
 ```json
 {
   "ok": true,
@@ -224,11 +231,13 @@ python -m build_platform.cli.dispatch --root . --wp WP-0042 --json
 **Side effects:** Updates WP state to `dispatched`. Appends a history event. Writes an audit entry at `audit/<wp-id>-<ts>.md`. Refreshes the dashboard.
 
 **Tier-1 failure modes:**
+
 - Scope > 50KB → `DispatchError` raised before Ollama call. WP state unchanged.
 - Diff validation fails twice → WP transitioned to `blocked`. Exit 3.
 - Ollama unreachable → Exit 2 with `ollama pull` / `ollama serve` guidance.
 
 **Tier-1 retry behavior** (configured via `.brains-build/config.yml`):
+
 - `max_retries: 3` for transient network errors (ConnectError, timeouts). Default 3.
 - `retry_backoff_base_seconds: 1.0` — actual backoff is `base * 2**attempt` (1s, 2s, 4s).
 - HTTP status errors (e.g., 4xx, 5xx) are NOT retried — they need user attention.
@@ -260,6 +269,7 @@ python -m build_platform.cli.dispatch_apply --root . --wp WP-0001 --test-timeout
 **Exit codes:** `0` apply + tests succeeded (or tests skipped); WP → `in_review` · `1` WP not found / wrong state / no diff · `3` `git apply --check` failed (WP → `blocked`) · `4` tests failed after apply (WP → `blocked`).
 
 **Output (success):**
+
 ```json
 {
   "ok": true,
@@ -271,6 +281,7 @@ python -m build_platform.cli.dispatch_apply --root . --wp WP-0001 --test-timeout
 ```
 
 **Behavior on failure:**
+
 - `git apply --check` fails → WP transitioned to `blocked` with the check stderr in the history event. Audit entry result=`check_failed`. Source tree untouched.
 - `git apply` itself fails (rare after a passing --check) → WP transitioned to `blocked`. Audit result=`apply_failed`.
 - Test command fails or times out → WP transitioned to `blocked` (diff stays applied). Audit result=`tests_failed` / `tests_timeout`.
@@ -287,6 +298,7 @@ python -m build_platform.cli.loop --root . --limit 5 --json
 ```
 
 **Eligibility (all must hold):**
+
 1. `state == defined`
 2. `autonomy == auto`
 3. `tier == 1`
@@ -302,6 +314,7 @@ WPs are processed in WP-id order, up to `--limit` items.
 | `--dry-run` | — | Print the planned queue without dispatching |
 
 **Output (success or partial):**
+
 ```json
 {
   "dispatched": ["WP-0011", "WP-0012"],
@@ -312,6 +325,7 @@ WPs are processed in WP-id order, up to `--limit` items.
 ```
 
 **Output (dry-run):**
+
 ```json
 {
   "dry_run": true,
@@ -322,6 +336,7 @@ WPs are processed in WP-id order, up to `--limit` items.
 **Exit codes:** `0` loop completed cleanly (zero or more dispatches, no failures) · `1` halted on a dispatch / apply / test failure · `2` precondition error (no eligible WPs is NOT an error — exits 0 with empty `dispatched`).
 
 **Safety:**
+
 - The CLI authoritatively enforces eligibility. A tier-2 WP marked `auto` (which `package` should have rejected) is still skipped here as a second line of defence.
 - A non-empty `git status --porcelain` triggers a warning. The loop refuses to run on a dirty tree unless `--allow-dirty` is set (escape hatch, off by default).
 - Each step is a separate audit entry — partial runs are fully recoverable.
@@ -350,6 +365,7 @@ python -m build_platform.cli.dispatch_reject `
 **Preconditions:** WP must be in state `dispatched`.
 
 **Output:**
+
 ```json
 {
   "ok": true, "wp_id": "WP-0001",
@@ -372,6 +388,7 @@ python -m build_platform.cli.scrum --root . --json
 ```
 
 **Output:**
+
 ```json
 {
   "ok": true,
@@ -382,6 +399,7 @@ python -m build_platform.cli.scrum --root . --json
 ```
 
 **What the CLI writes** (raw diff embedded in the stub):
+
 - WPs created / dispatched / done / blocked since last scrum
 - Git commits since the same timestamp (if the project is a git repo)
 - Five empty sections for the PMO Lead to fill: Progress · Blockers · Velocity · Re-prioritization · Next up
@@ -414,6 +432,7 @@ python -m build_platform.cli.schedule_scrum `
 | `--disable` | no | — | Mark `scrum_schedule.enabled = False` in config (does not delete the remote routine) |
 
 **Output:**
+
 ```json
 {
   "ok": true,
@@ -428,11 +447,11 @@ python -m build_platform.cli.schedule_scrum `
 }
 ```
 
-**Why the routine only sends a reminder:** remote routines created by `/schedule` run in Claude's cloud and cannot read the local `.brains-build/`. So the routine sends a `PushNotification` reminding the user to run `/build-scrum` themselves. True autonomous remote scrum requires the v2 GitHub mirror.
+**Why the routine only sends a reminder:** remote routines created by `/schedule` run in Claude's cloud and cannot read the local `.brains-build/`. The routine therefore sends a `PushNotification` reminding the user to run `/build-scrum` themselves. True autonomous remote scrum requires the v2 GitHub mirror.
 
 **Side effects:** Writes `scrum_schedule.{enabled, cron, timezone, routine_id}` to `.brains-build/config.yml`.
 
-**Exit codes:** `0` success · `2` invalid day/hour/minute.
+**Exit codes:** `0` success · `2` malformed day/hour/minute.
 
 ---
 
@@ -446,6 +465,7 @@ python -m build_platform.cli.status --root . --wp WP-0042 --json
 ```
 
 **Output (project summary):**
+
 ```json
 {
   "project": "Demo",
@@ -518,6 +538,7 @@ python -m build_platform.cli.mirror push --root . --dry-run --json
 Reconciles everything. On first run, seeds platform labels (state-*, tier-1/2, workstream-*, deliverable-*, persona-*) and creates a milestone per sprint file. For each WP, creates an issue or edits the mapped one. Closes on `state=done`, reopens on `state=blocked`. Persists wp_id → issue_number map at `.brains-build/github-mirror.json`. Idempotent.
 
 **Dry-run output** (--dry-run):
+
 ```json
 {
   "ok": true, "dry_run": true, "repo": "shard-BRAINS/demo",
@@ -529,6 +550,7 @@ Reconciles everything. On first run, seeds platform labels (state-*, tier-1/2, w
 ```
 
 **Output:**
+
 ```json
 {
   "ok": true,
@@ -540,7 +562,7 @@ Reconciles everything. On first run, seeds platform labels (state-*, tier-1/2, w
 }
 ```
 
-**Exit codes:** `0` success · `2` mirror disabled or `gh` failure.
+**Exit codes:** `0` success · `2` mirror turned off or `gh` failure.
 
 ### `mirror pull` (v2.6)
 
@@ -563,6 +585,7 @@ Reconcile remote GitHub signals back into local state. Read-only on GitHub.
 **Decision-comment ingestion:** any comment whose first line is `bbp:decision` is parsed and appended to `decisions.md`. Idempotent via `mirror_map.seen_comments`. Required fields: `title` and `decision`; optional: `owner`, `why`, `alternatives`, `related-wp`.
 
 **Output:**
+
 ```json
 {
   "ok": true, "repo": "shard-BRAINS/demo",
@@ -572,7 +595,7 @@ Reconcile remote GitHub signals back into local state. Read-only on GitHub.
 }
 ```
 
-**Exit codes:** `0` success · `2` mirror disabled.
+**Exit codes:** `0` success · `2` mirror turned off.
 
 ### `mirror status`
 
@@ -637,11 +660,13 @@ python -m build_platform.cli.portfolio view --format both --json
 | `--out` | — | Write rendered view to this path (overrides default location) |
 
 **Default destinations:**
+
 - `md` → stdout
 - `html` → `~/brains-build-portfolio.html`
 - `both` → `~/brains-build-portfolio.{md,html}`
 
 **Output (--json):**
+
 ```json
 {
   "ok": true,
@@ -705,6 +730,7 @@ python -m build_platform.cli.persona register `
 | `read-only` | `claude-sonnet-4-6` | Read, Grep, Glob, Bash |
 
 **Output:**
+
 ```json
 {
   "ok": true,
@@ -716,7 +742,7 @@ python -m build_platform.cli.persona register `
 }
 ```
 
-**Exit codes:** `0` success · `2` invalid id · `3` already exists (use `--force`).
+**Exit codes:** `0` success · `2` malformed id · `3` already exists (use `--force`).
 
 ### `persona list`
 
@@ -727,6 +753,7 @@ python -m build_platform.cli.persona list --root . --json
 Lists project-local + globally-installed personas. Local overrides global on id collision.
 
 **Output:**
+
 ```json
 {
   "ok": true,
@@ -774,6 +801,7 @@ python -m build_platform.cli.dashboard --root . --format md
 **Sections rendered:** Plan position · Live (right now) · Health · Deliverables · Workstreams · Persona activity · Daily completed work · Open blockers · Recent decisions · Up next.
 
 **HTML brand styling:**
+
 - Gold Deep `#D99518` on white (accessible 4.6:1 contrast); Gold `#FCC14D` only as decorative token, never as body text.
 - No italic body text, no justified text. Left-aligned, ragged-right.
 - Atkinson Hyperlegible / Inter font stack with system fallbacks.
@@ -787,6 +815,7 @@ The dashboard is refreshed automatically by `dispatch` and `scrum` (markdown onl
 ## Common patterns
 
 **Project setup:**
+
 ```powershell
 python -m build_platform.cli.init --root . --name X --mission "..." --stack python --deliverable "D-a:Title:Why:accept"
 ollama pull qwen2.5-coder:7b
@@ -794,6 +823,7 @@ ollama pull llama3.2:3b
 ```
 
 **Add and dispatch a tier-1 WP:**
+
 ```powershell
 python -m build_platform.cli.package --root . --title "..." --workstream backend `
   --deliverable D-a --tier 1 --executor build-backend-sme `
@@ -803,6 +833,7 @@ python -m build_platform.cli.dispatch --root . --wp WP-0001 --json
 ```
 
 **Weekly cadence:**
+
 ```powershell
 python -m build_platform.cli.scrum --root . --json
 # In Claude Code: spawn build-pmo-lead subagent against the recap stub

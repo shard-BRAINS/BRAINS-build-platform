@@ -31,7 +31,7 @@ python -m build_platform.cli.init `
   --json
 ```
 
-6. **Print the next-step block** (returned by the CLI), including the exact `ollama pull` commands.
+1. **Print the next-step block** (returned by the CLI), including the exact `ollama pull` commands.
 
 ## What the CLI writes
 

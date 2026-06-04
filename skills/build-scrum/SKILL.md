@@ -15,19 +15,19 @@ python -m build_platform.cli.scrum --root . --json
 
 This writes a recap stub at `.brains-build/sprints/sprint-NN.md` with the raw diff embedded and five sections to fill in.
 
-2. **Spawn `build-pmo-lead`** with:
+1. **Spawn `build-pmo-lead`** with:
    - Path to the recap stub
    - Path to `.brains-build/` for direct reads (project.yml, deliverables, work-packages, audit/)
 
 PMO Lead fills in: Progress, Blockers, Velocity, Re-prioritization, Next up — and surfaces any `[USER ACTION]` blocks at the top.
 
-3. **PMO Lead refreshes the dashboard:**
+1. **PMO Lead refreshes the dashboard:**
 
 ```powershell
 python -m build_platform.cli.dashboard --root . --json
 ```
 
-4. **Print a one-screen summary** of the recap to the user — pull from the recap file. Lead with `[USER ACTION]` blocks if any.
+1. **Print a one-screen summary** of the recap to the user — pull from the recap file. Lead with `[USER ACTION]` blocks if any.
 
 ## Don't
 

@@ -29,7 +29,7 @@ python -m build_platform.cli.timeline --root . --count 50 --json
 
 Each line is one audit entry, padded for column alignment:
 
-```
+```text
 HH:MM             persona                   wp-id       tier-N  result              runtime  cost
 ```
 

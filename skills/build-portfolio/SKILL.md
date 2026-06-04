@@ -43,7 +43,7 @@ Scan every registered project and render the aggregated view. Default format `md
 python -m build_platform.cli.portfolio view --format both --json
 ```
 
-Each row shows: project name, mission, deliverable progress (done/total + %), active WP count, blocked WP count, last activity timestamp, and the absolute path. Projects whose `.brains-build/` is missing or invalid render as `_error_` rows — the scan never fails outright.
+Each row shows: project name, mission, deliverable progress (done/total + %), active WP count, blocked WP count, last activity timestamp, and the absolute path. Projects whose `.brains-build/` is missing or malformed render as `_error_` rows — the scan never fails outright.
 
 ## Flow when the user asks for a portfolio view
 

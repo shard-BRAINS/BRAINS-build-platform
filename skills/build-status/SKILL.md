@@ -8,16 +8,19 @@ description: Read-only status query for the active build project. Project-level 
 ## Flow
 
 For project summary:
+
 ```powershell
 python -m build_platform.cli.status --root . --json
 ```
 
 For a specific WP:
+
 ```powershell
 python -m build_platform.cli.status --root . --wp WP-XXXX --json
 ```
 
 For a specific persona's activity: grep the audit files.
+
 ```powershell
 Get-ChildItem .brains-build\audit\*.md | Select-String -Pattern "Persona:.*<persona-id>"
 ```

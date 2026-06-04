@@ -14,14 +14,16 @@ description: Execute a work package. Tier-1 routes through Ollama and Dev Orches
 python -m build_platform.cli.dispatch --root . --wp WP-XXXX --json
 ```
 
-3. The CLI returns one of two shapes:
+1. The CLI returns one of two shapes:
 
 ### Tier-1 (Ollama) response
+
 ```json
 { "ok": true, "wp_id": "WP-X", "tier": 1, "diff": "<path>", "next": "review and apply" }
 ```
 
 What you do:
+
 - Read the diff at the returned path.
 - Spawn `build-dev-orchestrator` to review the diff against the WP spec.
 - Verdict cases:
@@ -42,11 +44,13 @@ What you do:
     ```
 
 ### Tier-2 (Claude subagent) response
+
 ```json
 { "ok": true, "wp_id": "WP-X", "tier": 2, "brief": "<path>", "next": "Spawn <persona> subagent with this brief" }
 ```
 
 What you do:
+
 - Read the brief.
 - Spawn the named executor persona subagent (e.g., `build-backend-sme`) with the brief path as its primary input.
 - When the subagent returns its Result block:
@@ -57,6 +61,7 @@ What you do:
 - If QA fails: mark WP `blocked` with QA findings; refresh dashboard.
 
 ### Autonomy modes (`autonomy` field on each WP)
+
 - `manual` (default) — every step pauses for user confirmation. Safest. Use for unfamiliar work or judgement-heavy tasks.
 - `review-on-complete` — executor runs to completion; user reviews + approves before the next WP. Code-review SME is always run.
 - `auto` (tier-1 only) — fully unattended via `/build-loop`. Code-review SME is run; failures stop the loop and block the WP. Only tier-1 WPs can be `auto` — judgement work always needs a human pass.

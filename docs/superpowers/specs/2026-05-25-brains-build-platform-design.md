@@ -60,7 +60,7 @@ A **markdown PMO dashboard** is the single source of truth for the user. Opening
 
 ### 3.1 Three-tier shape
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  Skill verbs (build-init, build-dispatch, build-scrum, …)   │
 │  Thin SKILL.md files — orchestration prose only             │
@@ -98,6 +98,7 @@ Mirrors the existing `brains-*` family pattern.
 | `build-dashboard` | Render markdown PMO dashboard (idempotent) | `/build-dashboard`, "show dashboard" |
 
 **Token discipline:**
+
 - Master `build-platform` SKILL.md ≤ 150 lines
 - Each verb SKILL.md ≤ 200 lines
 - Heavy logic lives in `scripts/` directories, not SKILL.md
@@ -142,7 +143,7 @@ All 8 personas live as standalone subagent definitions under `C:\Users\matth\.cl
 - **Consulted** — personas named in WP's `consult` field (spawned read-only during dispatch)
 - **Informed** — PMO Lead always; user via dashboard
 
-RACI emerges from the audit trail + persona definitions. There is no separate RACI matrix file to maintain.
+RACI emerges from the audit trail + persona definitions. No separate RACI matrix file needs maintaining.
 
 ---
 
@@ -152,7 +153,7 @@ All state lives under `.brains-build/` in the project root. Files are canonical;
 
 ### 4.1 Directory layout
 
-```
+```text
 .brains-build/
 ├── project.yml                  # Project context: name, mission, stack, constraints
 ├── deliverables.yml             # Top-level deliverables + acceptance criteria
@@ -178,6 +179,7 @@ All state lives under `.brains-build/` in the project root. Files are canonical;
 ### 4.2 Schemas
 
 **`project.yml`:**
+
 ```yaml
 name: string
 mission: string                  # one sentence
@@ -188,6 +190,7 @@ created: ISO-8601
 ```
 
 **`deliverables.yml`:**
+
 ```yaml
 deliverables:
   - id: D-auth
@@ -201,6 +204,7 @@ deliverables:
 ```
 
 **`workstreams.yml`:**
+
 ```yaml
 workstreams:
   - id: backend
@@ -210,6 +214,7 @@ workstreams:
 ```
 
 **`work-packages.jsonl`** (one JSON per line, append-only):
+
 ```json
 {
   "id": "WP-0042",
@@ -232,12 +237,13 @@ workstreams:
 
 **State machine** (enforced by `build-dispatch` script, not by personas):
 
-```
+```text
 defined ──► dispatched ──► in_review ──► done
                        └─► blocked  (requires PMO or user to unblock)
 ```
 
 **`config.yml`:**
+
 ```yaml
 ollama:
   url: http://localhost:11434
@@ -450,7 +456,7 @@ Proof MVP works:
 3. `/build-scrum` produces a recap file and refreshed dashboard reflecting actual state.
 4. `dashboards/current.md` shows Plan position, Live, Health, Blockers, Up next — enough to answer "where are we" without invoking the platform.
 5. Any WP's full lifecycle can be reconstructed from `.brains-build/audit/` files alone.
-6. Tier-1 dispatch failure paths (Ollama down, model missing, invalid diff, Dev Orch rejects) all produce clear errors and correct state transitions without manual intervention.
+6. Tier-1 dispatch failure paths (Ollama down, model missing, malformed diff, Dev Orch rejects) all produce clear errors and correct state transitions without manual intervention.
 7. All 8 skills (1 master router + 7 verbs) pass a smoke test: load SKILL.md, invoke each verb's primary command on a seeded project, expect no errors.
 
 ---
