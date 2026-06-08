@@ -13,7 +13,7 @@
 
 <br />
 
-[![BRAINS Standard Certified](https://img.shields.io/badge/BRAINS-Standard%20Certified-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/BRAINS-template-repo)
+[![BRAINS Certified Gold](https://img.shields.io/badge/BRAINS%20Certified-Gold-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/BRAINS-template-repo)
 [![Status](https://img.shields.io/badge/status-v0.1.0%20MVP-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/BRAINS-build-platform/releases/tag/v0.1.0)
 [![Tests](https://img.shields.io/badge/tests-270%2F270%20passing-2A8B91?style=for-the-badge&labelColor=0A0A0A)](#run-the-tests)
 [![Python](https://img.shields.io/badge/python-3.11%2B-D99518?style=for-the-badge&logo=python&logoColor=FFFFFF&labelColor=0A0A0A)](#install)
@@ -24,7 +24,7 @@
 
 <br />
 
-<a href="https://github.com/shard-BRAINS/BRAINS-template-repo" title="Meets the BRAINS standard floor — click for the standard"><img src=".github/badges/brains-standard-certified.svg" alt="BRAINS Certified — Repository Standard" height="86"></a>
+<a href="https://github.com/shard-BRAINS/BRAINS-template-repo" title="Meets the BRAINS standard floor — click for the standard"><img src="https://raw.githubusercontent.com/shard-BRAINS/BRAINS-template-repo/main/assets/badges/brains-certified-gold.svg" alt="BRAINS Certified — Gold Standard" height="86"></a>
 
 <br />
 
