@@ -5,7 +5,7 @@ description: Master entry point for the BRAINS Build Platform. Use when the user
 
 # BRAINS Build Platform — system overview
 
-I drive software delivery via a fixed team of AI personas (3 leadership + 6 executor SMEs), local-file state under `.brains-build/`, and Ollama for cheap tier-1 mechanical work. Use this skill when the user mentions any build / project / dispatch / scrum / deliverable / work-package action.
+I drive software delivery via a fixed team of AI personas (3 leadership + 7 executor SMEs), local-file state under `.brains-build/`, and Ollama for cheap tier-1 mechanical work. Use this skill when the user mentions any build / project / dispatch / scrum / deliverable / work-package action.
 
 ## Autonomy modes
 
@@ -23,7 +23,8 @@ Always check whether one of these matches the user's intent first.
 
 | Skill | Use when |
 |---|---|
-| `build-init` | New build project; "init build", "start a build" |
+| `build-init` | New build project from scratch; "init build", "start a build" |
+| `build-adopt` | "Adopt this repo", "onboard this codebase", "reverse-engineer the spec" — existing code, spec recovered from a survey |
 | `build-package` | "Add work package", "break down deliverable X" |
 | `build-dispatch` | "Dispatch WP-X", "run next" |
 | `build-loop` | "Run the loop", "auto-dispatch", "burn down the auto queue" — unattended execution of `autonomy=auto` tier-1 WPs |
@@ -33,7 +34,7 @@ Always check whether one of these matches the user's intent first.
 | `build-decision` | "Log decision", "we decided X" |
 | `build-dashboard` | "Show dashboard" |
 | `build-timeline` | "Show the timeline", "what happened when", "recent dispatches" — chronological read-only view over the audit log |
-| `build-persona` | "Add a Data SME", "register a new persona", "list personas" — custom personas beyond the default 9 |
+| `build-persona` | "Add a Data SME", "register a new persona", "list personas" — custom personas beyond the default 10 |
 | `build-portfolio` | "How are all my projects doing", "portfolio view", "rollup across projects" — cross-project aggregation |
 | `build-mirror` | "Push to GitHub", "sync to GitHub", "mirror this build" — one-way push of WPs/sprints to GitHub Issues + Milestones |
 
@@ -45,8 +46,10 @@ All project state lives in `.brains-build/` in the project root. Files are canon
 
 The 9 personas are subagent definitions in `~/.claude/agents/build/`. Spawn them via the `Agent` tool when a verb's flow calls for it:
 
-- Leadership tier (`build-pmo-lead`, `build-dev-orchestrator`, `build-product-owner`) — `claude-opus-4-8`.
-- Executor tier (`build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`) — `claude-sonnet-5`.
+- Leadership tier (`build-pmo-lead`, `build-dev-orchestrator`, `build-business-analyst`) — `claude-opus-4-8`.
+- Executor tier (`build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`, `build-debug-sme`) — `claude-sonnet-5`.
+
+The user is the Product Owner. `build-business-analyst` serves them — it formalises their intent into testable acceptance criteria and guards scope; it never decides what gets built. `build-pmo-lead` reports to the user, not to the Dev Orchestrator, so its velocity and blocker reporting stays independent of the delivery it measures.
 
 ## Tiering
 

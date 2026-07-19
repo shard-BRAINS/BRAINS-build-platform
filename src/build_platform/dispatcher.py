@@ -182,6 +182,7 @@ PERSONA_MISSIONS = {
     "build-qa-sme": "Write or update tests to verify acceptance criteria.",
     "build-security-sme": "Read-only audit; produce findings, do not modify code.",
     "build-devops-sme": "Update CI/CD/deploy configs per the work package.",
+    "build-debug-sme": "Reproduce the failure, prove the root cause, then fix minimally with a regression test.",
 }
 
 
