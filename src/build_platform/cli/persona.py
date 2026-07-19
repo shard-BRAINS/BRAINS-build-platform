@@ -12,7 +12,7 @@ from importlib.resources import files as pkg_files
 from pathlib import Path
 
 import click
-from jinja2 import Template
+from jinja2 import Template, select_autoescape
 
 from build_platform.paths import find_brains_build_root, state_dir
 
@@ -51,7 +51,7 @@ _DEFAULT_RULES = [
 
 def _load_template() -> Template:
     src = pkg_files("build_platform.templates").joinpath("custom_persona.md.j2").read_text(encoding="utf-8")
-    return Template(src, keep_trailing_newline=True)
+    return Template(src, autoescape=select_autoescape(), keep_trailing_newline=True)
 
 
 def _local_personas_dir(project_root: Path) -> Path:

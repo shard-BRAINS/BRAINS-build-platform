@@ -10,7 +10,7 @@ import tempfile
 from importlib.resources import files
 from pathlib import Path
 
-from jinja2 import Template
+from jinja2 import Template, select_autoescape
 
 from build_platform.ollama_client import OllamaClient
 from build_platform.paths import state_dir
@@ -173,7 +173,7 @@ def _read_scope_files(project_root: Path, paths: list[str]) -> list[tuple[str, s
 
 def _tier1_template() -> Template:
     src = files("build_platform.templates").joinpath("tier1_executor.j2").read_text(encoding="utf-8")
-    return Template(src, keep_trailing_newline=True)
+    return Template(src, autoescape=select_autoescape(), keep_trailing_newline=True)
 
 
 PERSONA_MISSIONS = {

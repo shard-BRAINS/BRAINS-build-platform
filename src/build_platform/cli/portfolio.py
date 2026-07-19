@@ -10,7 +10,7 @@ from importlib.resources import files as pkg_files
 from pathlib import Path
 
 import click
-from jinja2 import Template
+from jinja2 import Template, select_autoescape
 
 from build_platform.paths import STATE_DIR_NAME
 from build_platform.portfolio import (
@@ -24,7 +24,7 @@ from build_platform.portfolio import (
 
 def _load_template(name: str) -> Template:
     src = pkg_files("build_platform.templates").joinpath(name).read_text(encoding="utf-8")
-    return Template(src, keep_trailing_newline=True)
+    return Template(src, autoescape=select_autoescape(), keep_trailing_newline=True)
 
 
 def _resolve(path: str) -> Path:
