@@ -7,7 +7,7 @@ description: Log a project decision to decisions.md. Captures owner, decision, r
 
 ## Flow
 
-1. **Gather inputs.** If user input is freeform, spawn `build-product-owner` to shape it into the standard fields:
+1. **Gather inputs.** If user input is freeform, spawn `build-business-analyst` to shape it into the standard fields:
    - title (one line, imperative)
    - owner (persona id or `user:<name>`)
    - decision (one sentence)

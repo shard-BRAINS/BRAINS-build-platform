@@ -41,6 +41,44 @@ python -m build_platform.cli.init `
 
 ---
 
+## `python -m build_platform.cli.adopt`
+
+Survey an existing codebase so a build project can be defined over it. Where `init` is greenfield (you
+say what you want, it scaffolds), `adopt` runs the other direction — the code already exists and the
+spec has to be recovered from it.
+
+This CLI emits **facts only**: no LLM call, no inference about intent, no mutation of the surveyed
+code. Turning the survey into deliverables is `build-business-analyst`'s job, and confirming them is
+the user's. See the `build-adopt` skill for the full flow.
+
+```powershell
+python -m build_platform.cli.adopt --root .
+python -m build_platform.cli.adopt --root . --json
+python -m build_platform.cli.adopt --root . --no-write
+```
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `--root` | `.` | Root of the codebase to survey |
+| `--write` / `--no-write` | `--write` | Write `survey.json` + `survey.md` under `.brains-build/adopt/` |
+| `--json` | off | Emit the full survey as JSON on stdout |
+
+**Surveyed:** file counts by language (with non-code languages excluded from the primary-stack
+guess), dependency manifests, test layout, CI workflows, docs, top-level structure, git signals
+(commit count, contributors, date range, most-changed files), and suggested workstreams with reasons.
+
+File enumeration uses `git ls-files` when available so `.gitignore` is respected, and falls back to a
+filtered walk otherwise — the survey works on a directory that is not a git repository, in which case
+the `git` block reports `is_git_repo: false` rather than failing.
+
+**Output (JSON):** `{"ok": true, "survey": {...}, "written": {"json": "...", "md": "..."}}`
+
+**Exit codes:** `0` success · `1` `--root` is not a directory.
+
+---
+
 ## `python -m build_platform.cli.package`
 
 Add a work package. Heavy decomposition is the Dev Orchestrator subagent's job; this CLI validates the shape and writes.
@@ -731,7 +769,7 @@ Projects whose `.brains-build/` is missing render as `{"path": "...", "error": "
 
 ## `python -m build_platform.cli.persona`
 
-Click group with three subcommands: `register`, `list`, `install`. Manages custom personas beyond the default 9.
+Click group with three subcommands: `register`, `list`, `install`. Manages custom personas beyond the default 10.
 
 ### `persona register`
 
