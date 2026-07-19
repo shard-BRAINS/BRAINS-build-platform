@@ -20,15 +20,15 @@ _VALID_ID = re.compile(r"^build-[a-z][a-z0-9-]+[a-z0-9]$")
 
 _TIER_DEFAULTS = {
     "leadership": {
-        "model": "claude-opus-4-7",
+        "model": "claude-opus-4-8",
         "tools": "Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent",
     },
     "executor": {
-        "model": "claude-sonnet-4-6",
+        "model": "claude-sonnet-5",
         "tools": "Read, Write, Edit, Grep, Glob, Bash",
     },
     "read-only": {
-        "model": "claude-sonnet-4-6",
+        "model": "claude-sonnet-5",
         "tools": "Read, Grep, Glob, Bash",
     },
 }

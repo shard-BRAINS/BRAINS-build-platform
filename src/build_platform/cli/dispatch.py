@@ -98,7 +98,7 @@ def dispatch_cmd(root, wp_id, as_json):
         # them through the subagent result block and into this AuditEntry.
         write_audit(root_path, AuditEntry(
             wp_id=wp.id, timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            persona=wp.executor_persona, model="claude-sonnet-4-6",
+            persona=wp.executor_persona, model="claude-sonnet-5",
             tier=2, runtime_seconds=time.monotonic() - start, result="brief_emitted",
             inputs_read=wp.spec_files,
             outputs_written=[str(brief_path.relative_to(root_path))],

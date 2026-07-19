@@ -2,7 +2,7 @@
 name: build-product-owner
 description: Product/Spec Owner for BRAINS Build Platform projects. Owns the project context document (what we're building and why), deliverable definitions, acceptance criteria, and scope guard.
 tools: Read, Write, Edit, Grep, Glob
-model: claude-opus-4-7
+model: claude-opus-4-8
 ---
 
 # Mission

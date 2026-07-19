@@ -379,6 +379,45 @@ python -m build_platform.cli.dispatch_reject `
 
 ---
 
+## `python -m build_platform.cli.dispatch_request_changes`
+
+Code-Review SME verdict of `request-changes` on a dispatched diff. Writes the findings verbatim to
+`.brains-build/runs/<wp>/code-review.md`, deletes `proposed.diff`, and returns the WP to `defined`
+so it can be re-dispatched after fixes.
+
+```powershell
+python -m build_platform.cli.dispatch_request_changes --root . `
+  --wp WP-0042 `
+  --findings-file review-notes.txt `
+  --json
+```
+
+**Options:**
+
+| Option | Required | Description |
+|---|---|---|
+| `--wp` | yes | WP id. Must be in state `dispatched` or `in_review` |
+| `--findings-file` | yes | Path to a text file with one finding per line. Blank lines are dropped |
+| `--json` | no | Emit JSON instead of a human line |
+
+**Output:**
+
+```json
+{
+  "ok": true, "wp_id": "WP-0042",
+  "new_state": "defined",
+  "findings_count": 3,
+  "next": "Re-dispatch via /build-dispatch when fixes are in."
+}
+```
+
+The audit entry records `code_review_verdict: "request-changes"` plus the full findings list, and the
+first non-blank finding becomes the WP history event.
+
+**Exit codes:** `0` success · `1` WP not found / wrong state / findings file missing.
+
+---
+
 ## `python -m build_platform.cli.scrum`
 
 Assemble the weekly scrum brief and recap stub. The PMO Lead subagent fills in the qualitative sections.
@@ -692,7 +731,7 @@ Projects whose `.brains-build/` is missing render as `{"path": "...", "error": "
 
 ## `python -m build_platform.cli.persona`
 
-Click group with three subcommands: `register`, `list`, `install`. Manages custom personas beyond the default 8.
+Click group with three subcommands: `register`, `list`, `install`. Manages custom personas beyond the default 9.
 
 ### `persona register`
 
@@ -725,9 +764,9 @@ python -m build_platform.cli.persona register `
 
 | Tier | Model | Tools |
 |---|---|---|
-| `leadership` | `claude-opus-4-7` | Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent |
-| `executor` | `claude-sonnet-4-6` | Read, Write, Edit, Grep, Glob, Bash |
-| `read-only` | `claude-sonnet-4-6` | Read, Grep, Glob, Bash |
+| `leadership` | `claude-opus-4-8` | Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent |
+| `executor` | `claude-sonnet-5` | Read, Write, Edit, Grep, Glob, Bash |
+| `read-only` | `claude-sonnet-5` | Read, Grep, Glob, Bash |
 
 **Output:**
 
@@ -774,6 +813,88 @@ python -m build_platform.cli.persona install build-data-sme --root . --json
 Copies `.brains-build/personas/<id>.md` to `~/.claude/agents/build/<id>.md`. Re-run with `--force` to overwrite global.
 
 **Exit codes:** `0` success · `1` no local persona with that id · `3` global already exists (use `--force`).
+
+---
+
+## `python -m build_platform.cli.timeline`
+
+Read-only chronological view of the audit trail. Reads the append-only audit index at
+`.brains-build/audit/index.jsonl`, takes the N most-recent entries, then prints them oldest-first
+so the output reads like a transcript.
+
+```powershell
+python -m build_platform.cli.timeline --root .
+python -m build_platform.cli.timeline --root . --count 50
+python -m build_platform.cli.timeline --root . --json
+```
+
+**Options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `--count` / `-n` | `20` | Size of the most-recent window. Must be a positive integer |
+| `--json` | off | Emit the entry list as JSON instead of a formatted timeline |
+
+Timestamps render as `HH:MM` when the dispatch happened today in local time, and
+`YYYY-MM-DD HH:MM` otherwise. An unparseable timestamp renders as `????-??-?? ??:??` rather than
+failing the command.
+
+**Output:**
+
+```text
+--- Build Timeline ---
+
+2026-05-24 16:20  build-backend-sme         WP-0041     tier-2  applied              124s  $0.31
+09:14             build-qa-sme              WP-0042     tier-2  brief_emitted         62s  $0.12
+```
+
+With `--json`, a JSON array of raw audit-index records in the same chronological order.
+
+**Exit codes:** `0` success (including the empty-audit case) · `1` `--count` not positive.
+
+---
+
+## `python -m build_platform.cli.transition`
+
+Generic WP state escape hatch. Moves a WP from any current state to any target state with **no
+state-machine guard** — the caller owns the choice. Writes an audit entry, appends a history event,
+and refreshes the dashboard.
+
+```powershell
+python -m build_platform.cli.transition --root . `
+  --wp WP-0042 `
+  --to blocked `
+  --by "user:matth" `
+  --reason "Upstream API contract still unsigned" `
+  --json
+```
+
+**Options:**
+
+| Option | Required | Description |
+|---|---|---|
+| `--wp` | yes | WP id |
+| `--to` | yes | Target state. One of the `WPState` values |
+| `--by` | yes | Persona id or `user:<name>` performing the transition |
+| `--reason` | yes | One-line reason. Recorded in both history and audit |
+| `--json` | no | Emit JSON instead of a human line |
+
+The audit entry uses `model: "n/a-manual"` and a `result` of `transition_<from>_to_<to>`, which keeps
+manual moves distinguishable from model-driven ones in the timeline and cost rollups.
+
+**Output:**
+
+```json
+{
+  "ok": true, "wp_id": "WP-0042",
+  "from_state": "dispatched",
+  "new_state": "blocked",
+  "reason": "Upstream API contract still unsigned"
+}
+```
+
+**Exit codes:** `0` success · `1` WP not found, or the WP is already in the target state
+(same-state transitions are refused).
 
 ---
 

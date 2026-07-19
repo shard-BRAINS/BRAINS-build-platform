@@ -1,6 +1,6 @@
 ---
 name: build-persona
-description: Register, list, or install custom personas for a BRAINS Build Platform project. Use when the user wants to add a new SME beyond the default 8 (e.g. "build-data-sme", "build-ml-sme", "build-design-sme"), list available personas, or promote a project-local persona to global.
+description: Register, list, or install custom personas for a BRAINS Build Platform project. Use when the user wants to add a new SME beyond the default 9 (e.g. "build-data-sme", "build-ml-sme", "build-design-sme"), list available personas, or promote a project-local persona to global.
 ---
 
 # Manage custom personas
@@ -33,9 +33,9 @@ python -m build_platform.cli.persona register `
 
 | Tier | Model | Tools |
 |---|---|---|
-| `leadership` | `claude-opus-4-7` | Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent |
-| `executor` | `claude-sonnet-4-6` | Read, Write, Edit, Grep, Glob, Bash |
-| `read-only` | `claude-sonnet-4-6` | Read, Grep, Glob, Bash |
+| `leadership` | `claude-opus-4-8` | Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Agent |
+| `executor` | `claude-sonnet-5` | Read, Write, Edit, Grep, Glob, Bash |
+| `read-only` | `claude-sonnet-5` | Read, Grep, Glob, Bash |
 
 ## List available personas
 
@@ -70,5 +70,5 @@ Copies `.brains-build/personas/build-data-sme.md` to `~/.claude/agents/build/bui
 ## Don't
 
 - Don't edit `.brains-build/personas/*.md` by hand. Always go through the CLI so structure stays consistent.
-- Don't use ids that collide with the 8 default personas (`build-pmo-lead`, `build-dev-orchestrator`, `build-product-owner`, `build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`).
+- Don't use ids that collide with the 9 default personas (`build-pmo-lead`, `build-dev-orchestrator`, `build-product-owner`, `build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`).
 - Don't install a project-specific persona globally if its mission only makes sense in that project context.

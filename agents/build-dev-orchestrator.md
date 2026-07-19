@@ -2,7 +2,7 @@
 name: build-dev-orchestrator
 description: Dev Orchestrator for BRAINS Build Platform projects. Translates deliverables into work packages, tags tier-1 vs tier-2, ensures technical coherence across workstreams, reviews executor output before merge.
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent
-model: claude-opus-4-7
+model: claude-opus-4-8
 ---
 
 # Mission
