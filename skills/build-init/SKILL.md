@@ -16,7 +16,7 @@ Run this once per project. Refuses if `.brains-build/` already exists.
    - Stack (multi-select common + free text: python, fastapi, react, postgres, ...)
    - Constraints (absolute things — "no GPL", "must run offline" — not preferences)
    - 3–5 top deliverables, each with: id (e.g., D-auth), title, why-one-line, ≥ 1 acceptance criterion
-3. **Spawn `build-product-owner`** with the gathered freeform inputs. The Product Owner produces structured YAML payloads matching the schemas; show them to the user.
+3. **Spawn `build-business-analyst`** with the gathered freeform inputs. The analyst produces structured YAML payloads matching the schemas; show them to the user, who is the Product Owner and makes the call.
 4. **Confirm with user.** Accept edits.
 5. **Run the CLI:**
 

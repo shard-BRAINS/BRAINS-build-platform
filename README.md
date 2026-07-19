@@ -15,7 +15,7 @@
 
 [![BRAINS Certified Gold](https://img.shields.io/badge/BRAINS%20Certified-Gold-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/BRAINS-template-repo)
 [![Status](https://img.shields.io/badge/status-v0.1.0%20MVP-D99518?style=for-the-badge&labelColor=0A0A0A)](https://github.com/shard-BRAINS/BRAINS-build-platform/releases/tag/v0.1.0)
-[![Tests](https://img.shields.io/badge/tests-270%2F270%20passing-2A8B91?style=for-the-badge&labelColor=0A0A0A)](#run-the-tests)
+[![Tests](https://img.shields.io/badge/tests-291%2F291%20passing-2A8B91?style=for-the-badge&labelColor=0A0A0A)](#run-the-tests)
 [![Python](https://img.shields.io/badge/python-3.11%2B-D99518?style=for-the-badge&logo=python&logoColor=FFFFFF&labelColor=0A0A0A)](#install)
 [![Licence](https://img.shields.io/badge/licence-Apache%202.0-0A0A0A?style=for-the-badge&labelColor=D99518)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=FFFFFF&labelColor=0A0A0A)](https://discord.gg/BEmTXXscBr)
@@ -36,7 +36,7 @@
 
 ## What this is
 
-The Build Platform turns any software project into a team of AI personas. A **PMO Lead** drives delivery. A **Dev Orchestrator** breaks deliverables into work packages. Six executor SMEs — Frontend, Backend, Code Review, QA, Security, and DevOps — write, review, and test the code. Mechanical work goes to a local Ollama model. Work that needs judgement goes to Claude subagents.
+The Build Platform turns any software project into a team of AI personas. A **PMO Lead** drives delivery. A **Dev Orchestrator** breaks deliverables into work packages. Seven executor SMEs — Frontend, Backend, Code Review, QA, Security, DevOps, and Debug — write, review, and test the code. Mechanical work goes to a local Ollama model. Work that needs judgement goes to Claude subagents.
 
 State lives in a `.brains-build/` folder inside your project. The dashboard at `.brains-build/dashboards/current.md` is the one source of truth. Open it and you know where the build stands.
 
@@ -53,13 +53,13 @@ flowchart TD
     subgraph SKILLS["Claude Skills (~/.claude/skills/)"]
       direction LR
       MS["<b>build-platform</b><br/>master router"]:::skill
-      VS["<b>13 verb skills</b><br/>init · package · dispatch · loop · scrum · schedule-scrum<br/>status · decision · dashboard · persona · portfolio · mirror · timeline"]:::skill
+      VS["<b>14 verb skills</b><br/>init · adopt · package · dispatch · loop · scrum · schedule-scrum<br/>status · decision · dashboard · persona · portfolio · mirror · timeline"]:::skill
     end
 
     subgraph AGENTS["Subagents (~/.claude/agents/build/)"]
       direction LR
-      LEAD["<b>Leadership</b><br/>PMO Lead<br/>Dev Orchestrator<br/>Product Owner<br/><span style='font-size:11px'>Opus</span>"]:::lead
-      SME["<b>Executor SMEs</b><br/>Frontend · Backend · Code Review<br/>QA · Security · DevOps<br/><span style='font-size:11px'>Sonnet</span>"]:::sme
+      LEAD["<b>Leadership</b><br/>PMO Lead<br/>Dev Orchestrator<br/>Business Analyst<br/><span style='font-size:11px'>Opus</span>"]:::lead
+      SME["<b>Executor SMEs</b><br/>Frontend · Backend · Code Review<br/>QA · Security · DevOps · Debug<br/><span style='font-size:11px'>Sonnet</span>"]:::sme
     end
 
     subgraph PKG["build_platform Python package"]
@@ -98,19 +98,22 @@ Three tiers, one rule per tier:
 
 ## The team
 
-Nine personas, all spawned as Claude subagents from `~/.claude/agents/build/`.
+Ten personas, all spawned as Claude subagents from `~/.claude/agents/build/`.
+
+You are the Product Owner. The Business Analyst serves you — it turns your intent into testable acceptance criteria and guards scope, but never decides what gets built. The PMO Lead reports to you rather than to the Dev Orchestrator, so its velocity and blocker reporting stays independent of the delivery it measures.
 
 | Persona | Tier | Owns |
 |---|---|---|
 | ![PMO](https://img.shields.io/badge/-PMO%20Lead-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Backlog state, sprint cadence, blocker escalation, dashboard refresh, scrum recap |
 | ![Dev Orch](https://img.shields.io/badge/-Dev%20Orchestrator-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Deliverables → work packages, tier-1/tier-2 tagging, technical coherence, executor sign-off |
-| ![Product](https://img.shields.io/badge/-Product%20Owner-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Project context, deliverable definitions, acceptance criteria, scope guard |
+| ![Analyst](https://img.shields.io/badge/-Business%20Analyst-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Requirements elicitation, deliverable definitions, testable acceptance criteria, scope guard |
 | ![Frontend](https://img.shields.io/badge/-Frontend%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | UI components, styles, frontend tests, accessibility |
 | ![Backend](https://img.shields.io/badge/-Backend%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Services, APIs, data layer, backend tests |
 | ![Code Review](https://img.shields.io/badge/-Code%20Review%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Read-only review: architectural fit, style, codebase consistency before QA |
 | ![QA](https://img.shields.io/badge/-QA%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Acceptance verification, integration/E2E tests, regression matrices, bug repro |
 | ![Security](https://img.shields.io/badge/-Security%20SME-2A8B91?style=flat-square&labelColor=0A0A0A) | Sonnet | Read-only audit: secret scan, dep audit, OWASP review, threat surface |
 | ![DevOps](https://img.shields.io/badge/-DevOps%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | CI/CD config, build scripts, deploy manifests, environment management |
+| ![Debug](https://img.shields.io/badge/-Debug%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Fault isolation: reproduce, bisect to root cause, prove the diagnosis, fix minimally with a regression test |
 
 ---
 
@@ -202,7 +205,7 @@ ollama pull llama3.2:3b
 
 On Linux or macOS, run the steps by hand: create the venv, `pip install -e ".[dev]"`, copy `skills/*` to `~/.claude/skills/` and `agents/*.md` to `~/.claude/agents/build/`, then pull the Ollama models.
 
-The installer copies the 14 skills to `~/.claude/skills/` and the 9 subagent definitions to `~/.claude/agents/build/`. Then it editable-installs the Python package.
+The installer copies the 15 skills to `~/.claude/skills/` and the 10 subagent definitions to `~/.claude/agents/build/`. Then it editable-installs the Python package.
 
 ---
 
@@ -244,11 +247,12 @@ BRAINS-build-platform/
 │   │                            #   dispatch_apply, dispatch_reject,
 │   │                            #   dispatch_request_changes, loop, scrum,
 │   │                            #   schedule_scrum, status, decision, dashboard,
-│   │                            #   persona, portfolio, mirror, timeline, triage)
+│   │                            #   persona, portfolio, mirror, timeline, triage,
+│   │                            #   adopt)
 │   └── templates/               # Jinja templates for prompts, dashboards, audits
-├── skills/build-*/SKILL.md      # 14 Claude skills (1 router + 13 verbs)
-├── agents/build-*.md            # 9 subagent definitions
-├── tests/                       # pytest suite (270 tests, 100% pass)
+├── skills/build-*/SKILL.md      # 15 Claude skills (1 router + 14 verbs)
+├── agents/build-*.md            # 10 subagent definitions
+├── tests/                       # pytest suite (291 tests, 100% pass)
 ├── docs/superpowers/            # design spec + implementation plan
 ├── install.ps1                  # Installer (Windows / PowerShell)
 └── pyproject.toml
@@ -265,7 +269,7 @@ Per-project state lives in `.brains-build/` inside the project you're building, 
 ```
 
 ```text
-270 passed in ~11 seconds
+291 passed in ~16 seconds
 ```
 
 This includes an end-to-end smoke test. It runs `/build-init` → 3 WPs (1 tier-1, 2 tier-2) → 3 dispatches → scrum → dashboard render, with Ollama mocked (see `tests/test_end_to_end.py`). A second test covers the code-review gate. It walks dispatch → approve, request-changes, and reject across the audit trail and loop filter (see `tests/test_code_review_gate_integration.py`).
