@@ -535,8 +535,7 @@ def _ingest_new_decision_comments(
     except MirrorError:
         return []
 
-    decisions_md = state_dir(project_root).parent / ".brains-build" / "decisions.md"
-    # state_dir already returns .brains-build/, so this just resolves to the file:
+    # state_dir() already returns the .brains-build/ directory.
     decisions_md = state_dir(project_root) / "decisions.md"
 
     ingested: list[dict] = []
