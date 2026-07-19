@@ -37,7 +37,7 @@ def test_register_creates_persona_file(tmp_path: Path):
     assert persona_path.exists()
     content = persona_path.read_text(encoding="utf-8")
     assert "name: build-data-sme" in content
-    assert "claude-sonnet-4-6" in content  # default executor model
+    assert "claude-sonnet-5" in content  # default executor model
     assert "Data engineering SME" in content
     assert "# Mission" in content
 
@@ -100,7 +100,7 @@ def test_register_with_leadership_tier_picks_opus(tmp_path: Path):
     ])
     assert r.exit_code == 0
     content = Path(json.loads(r.output)["path"]).read_text(encoding="utf-8")
-    assert "claude-opus-4-7" in content
+    assert "claude-opus-4-8" in content
     assert "TodoWrite" in content  # leadership default tools
 
 

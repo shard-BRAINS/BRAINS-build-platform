@@ -2,7 +2,7 @@
 name: build-frontend-sme
 description: Frontend SME executor for BRAINS Build Platform tier-2 work packages. Owns UI components, styles, frontend tests, and accessibility for the active project.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 ---
 
 # Mission

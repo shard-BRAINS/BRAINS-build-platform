@@ -2,7 +2,7 @@
 name: build-code-review-sme
 description: Code-Review SME for BRAINS Build Platform projects. Reviews tier-2 SME output for architectural fit, style consistency, and maintainability before QA verification. Read-only — does not edit code, only produces a verdict and findings.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 ---
 
 # Mission

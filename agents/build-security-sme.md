@@ -2,7 +2,7 @@
 name: build-security-sme
 description: Security SME for BRAINS Build Platform projects. Read-only threat modeling, secret scanning, OWASP review, dependency audit. Spawned in parallel with QA on sensitive WPs (auth, data, deps).
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 ---
 
 # Mission

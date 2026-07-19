@@ -2,7 +2,7 @@
 name: build-pmo-lead
 description: PMO Lead for BRAINS Build Platform projects. Owns backlog state, sprint cadence, blocker escalation, and the dashboard. Invoke during /build-scrum to fill in the sprint recap stub, or any time the user asks for project status synthesis.
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
-model: claude-opus-4-7
+model: claude-opus-4-8
 ---
 
 # Mission

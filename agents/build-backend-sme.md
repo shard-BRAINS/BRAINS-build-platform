@@ -2,7 +2,7 @@
 name: build-backend-sme
 description: Backend SME executor for BRAINS Build Platform tier-2 work packages. Owns services, APIs, data layer, and backend tests for the active project.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 ---
 
 # Mission

@@ -2,7 +2,7 @@
 name: build-devops-sme
 description: DevOps SME executor for BRAINS Build Platform projects. Owns CI/CD config, build scripts, deploy manifests, and environment management.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 ---
 
 # Mission

@@ -32,7 +32,8 @@ Always check whether one of these matches the user's intent first.
 | `build-status` | "Status of X", "where are we" |
 | `build-decision` | "Log decision", "we decided X" |
 | `build-dashboard` | "Show dashboard" |
-| `build-persona` | "Add a Data SME", "register a new persona", "list personas" — custom personas beyond the default 8 |
+| `build-timeline` | "Show the timeline", "what happened when", "recent dispatches" — chronological read-only view over the audit log |
+| `build-persona` | "Add a Data SME", "register a new persona", "list personas" — custom personas beyond the default 9 |
 | `build-portfolio` | "How are all my projects doing", "portfolio view", "rollup across projects" — cross-project aggregation |
 | `build-mirror` | "Push to GitHub", "sync to GitHub", "mirror this build" — one-way push of WPs/sprints to GitHub Issues + Milestones |
 
@@ -44,8 +45,8 @@ All project state lives in `.brains-build/` in the project root. Files are canon
 
 The 9 personas are subagent definitions in `~/.claude/agents/build/`. Spawn them via the `Agent` tool when a verb's flow calls for it:
 
-- Leadership tier (`build-pmo-lead`, `build-dev-orchestrator`, `build-product-owner`) — `claude-opus-4-7`.
-- Executor tier (`build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`) — `claude-sonnet-4-6`.
+- Leadership tier (`build-pmo-lead`, `build-dev-orchestrator`, `build-product-owner`) — `claude-opus-4-8`.
+- Executor tier (`build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`) — `claude-sonnet-5`.
 
 ## Tiering
 

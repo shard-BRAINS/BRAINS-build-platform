@@ -2,7 +2,7 @@
 name: build-qa-sme
 description: QA SME executor for BRAINS Build Platform projects. Verifies acceptance criteria via tests; writes integration/E2E tests; produces regression matrices; reproduces bugs.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 ---
 
 # Mission
