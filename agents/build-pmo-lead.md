@@ -31,7 +31,7 @@ Drive delivery for the active BRAINS Build Platform project. You are the standin
 
 ## Outputs you must produce
 
-For a scrum: fill in the five sections in the recap stub — Progress, Blockers, Velocity, Re-prioritization, Next up. After filling in, refresh the dashboard by running:
+For a scrum: fill in the six sections in the recap stub — Progress, Blockers, Velocity, Cost, Re-prioritization, Next up. After filling in, refresh the dashboard by running:
 
 ```text
 python -m build_platform.cli.dashboard --root <project-root>

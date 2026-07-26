@@ -13,13 +13,15 @@ description: Run the weekly scrum ritual. Generates the since-last-scrum diff, s
 python -m build_platform.cli.scrum --root . --json
 ```
 
-This writes a recap stub at `.brains-build/sprints/sprint-NN.md` with the raw diff embedded and five sections to fill in.
+This writes a recap stub at `.brains-build/sprints/sprint-NN.md` with the raw diff embedded and six sections to fill in.
 
 1. **Spawn `build-pmo-lead`** with:
    - Path to the recap stub
    - Path to `.brains-build/` for direct reads (project.yml, deliverables, work-packages, audit/)
 
-PMO Lead fills in: Progress, Blockers, Velocity, Re-prioritization, Next up — and surfaces any `[USER ACTION]` blocks at the top.
+PMO Lead fills in: Progress, Blockers, Velocity, Cost, Re-prioritization, Next up — and surfaces any `[USER ACTION]` blocks at the top.
+
+Cost comes from rolling up `cost_usd`, `tokens_in`, and `tokens_out` in `.brains-build/audit/index.jsonl` for this sprint's window, reported against WPs completed. Cost alone is noise. A tier-1 line with real dollars on it is a finding — tier-1 runs through local Ollama and should be ~$0.
 
 1. **PMO Lead refreshes the dashboard:**
 

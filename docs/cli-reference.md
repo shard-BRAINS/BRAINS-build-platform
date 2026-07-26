@@ -35,7 +35,7 @@ python -m build_platform.cli.init `
 
 **Output (success):** `{"ok": true, "message": "...", "root": "..."}`
 
-**Writes:** `.brains-build/project.yml`, `deliverables.yml`, `workstreams.yml` (5 default workstreams), `config.yml`, empty `work-packages.jsonl`, seeded `decisions.md`.
+**Writes:** `.brains-build/project.yml`, `deliverables.yml`, `workstreams.yml` (6 default workstreams), `config.yml`, empty `work-packages.jsonl`, seeded `decisions.md`.
 
 **Exit codes:** `0` success · `1` already initialized · `2` malformed deliverable format.
 
@@ -236,8 +236,9 @@ python -m build_platform.cli.dispatch --root . --wp WP-0042 --json
 | Option | Required | Description |
 |---|---|---|
 | `--wp` | yes | WP id to dispatch |
+| `--force` | no | Dispatch past Debug SME escalation (see below) |
 
-**Preconditions:** WP must be in state `defined`. All `depends_on` WPs must be in state `done`. For tier-1, Ollama must be reachable AND `tier1_default` + `summarizer` models must be pulled.
+**Preconditions:** WP must be in state `defined`. All `depends_on` WPs must be in state `done`. The WP must have fewer than 2 recorded failures, or carry `build-debug-sme` as its executor, or pass `--force`. For tier-1, Ollama must be reachable AND `tier1_default` + `summarizer` models must be pulled.
 
 **Output — tier-1:**
 
@@ -280,7 +281,17 @@ python -m build_platform.cli.dispatch --root . --wp WP-0042 --json
 - `retry_backoff_base_seconds: 1.0` — actual backoff is `base * 2**attempt` (1s, 2s, 4s).
 - HTTP status errors (e.g., 4xx, 5xx) are NOT retried — they need user attention.
 
-**Exit codes:** `0` success · `1` WP not found / wrong state / unmet deps · `2` Ollama preflight failed · `3` dispatch failed.
+**Debug SME escalation:**
+
+Every WP carries a `failures` count. At 2, dispatch refuses with exit 7 rather than spending a third identical attempt:
+
+```json
+{"error": "WP-0042 has failed 2 times under build-backend-sme. Hand it to build-debug-sme for diagnosis rather than dispatching a further attempt: python -m build_platform.cli.package_edit --wp WP-0042 --executor build-debug-sme Override with --force."}
+```
+
+Incremented by: tier-1 dispatch failure, `dispatch_reject` (without `--retier`), `dispatch_request_changes`, `git apply --check` failure, `git apply` failure, post-apply test failure, and `transition --failure`. A WP already assigned to `build-debug-sme` never escalates to itself.
+
+**Exit codes:** `0` success · `1` WP not found / wrong state / unmet deps · `2` Ollama preflight failed · `3` dispatch failed · `7` Debug SME escalation required (use `--force` to override).
 
 ---
 
@@ -479,7 +490,7 @@ python -m build_platform.cli.scrum --root . --json
 
 - WPs created / dispatched / done / blocked since last scrum
 - Git commits since the same timestamp (if the project is a git repo)
-- Five empty sections for the PMO Lead to fill: Progress · Blockers · Velocity · Re-prioritization · Next up
+- Six empty sections for the PMO Lead to fill: Progress · Blockers · Velocity · Cost · Re-prioritization · Next up
 
 **Side effects:** Refreshes the dashboard.
 
@@ -551,7 +562,9 @@ python -m build_platform.cli.status --root . --wp WP-0042 --json
 }
 ```
 
-**Output (single WP):** Full WorkPackage as JSON (matches `schemas.WorkPackage`).
+**Output (single WP):** Full WorkPackage as JSON (matches `schemas.WorkPackage`), including the
+`failures` count. When that count has reached the escalation threshold, an extra `escalation` key
+carries the one-line instruction to hand the WP to `build-debug-sme`.
 
 ---
 
@@ -915,10 +928,15 @@ python -m build_platform.cli.transition --root . `
 | `--to` | yes | Target state. One of the `WPState` values |
 | `--by` | yes | Persona id or `user:<name>` performing the transition |
 | `--reason` | yes | One-line reason. Recorded in both history and audit |
+| `--failure` | no | Count this as a failed execution attempt (see below) |
 | `--json` | no | Emit JSON instead of a human line |
 
 The audit entry uses `model: "n/a-manual"` and a `result` of `transition_<from>_to_<to>`, which keeps
 manual moves distinguishable from model-driven ones in the timeline and cost rollups.
+
+`--failure` increments the WP's `failures` count, which drives Debug SME escalation at 2. It is how a
+QA failure — decided by a subagent, not by the CLI — reaches the counter. Use it for genuine failed
+attempts only; blocking a WP on an external dependency is not a failed attempt.
 
 **Output:**
 
@@ -927,9 +945,13 @@ manual moves distinguishable from model-driven ones in the timeline and cost rol
   "ok": true, "wp_id": "WP-0042",
   "from_state": "dispatched",
   "new_state": "blocked",
-  "reason": "Upstream API contract still unsigned"
+  "reason": "Acceptance criterion 2 not met",
+  "failures": 2,
+  "escalation": "WP-0042 has failed 2 times under build-backend-sme. Hand it to build-debug-sme ..."
 }
 ```
+
+`escalation` is present only when the threshold is reached and the WP is not already the Debug SME's.
 
 **Exit codes:** `0` success · `1` WP not found, or the WP is already in the target state
 (same-state transitions are refused).

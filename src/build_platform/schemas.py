@@ -55,6 +55,42 @@ class WorkPackage(BaseModel):
     created_by: str
     created_at: str  # ISO-8601
     history: list[WPHistoryEvent] = Field(default_factory=list)
+    # Count of failed execution attempts: tier-1 dispatch errors, code-review
+    # rejects and request-changes, failed applies, failed tests, and manual
+    # transitions flagged --failure (QA fail). Not incremented by --retier,
+    # which re-classifies the WP rather than recording a failed attempt.
+    # Defaults to 0 so WPs written before this field validate unchanged.
+    failures: int = 0
+
+    def needs_debug_escalation(self) -> bool:
+        """True once repeated failure means the problem is not the one being solved.
+
+        Two failures is the Debug SME's trigger. A WP already assigned to the
+        Debug SME cannot escalate to itself.
+        """
+        return (
+            self.failures >= DEBUG_ESCALATION_THRESHOLD
+            and self.executor_persona != DEBUG_PERSONA
+        )
+
+    def debug_escalation_notice(self, *, extra: str = "") -> str:
+        """One-line instruction for the caller when escalation is due.
+
+        ``extra`` is inserted before the command so the copy-pasteable
+        re-assignment stays last, unbroken by trailing prose.
+        """
+        tail = f" {extra}" if extra else ""
+        return (
+            f"{self.id} has failed {self.failures} times under "
+            f"{self.executor_persona}. Hand it to {DEBUG_PERSONA} for diagnosis "
+            f"rather than dispatching a further attempt.{tail} Re-assign with: "
+            f"python -m build_platform.cli.package_edit --wp {self.id} "
+            f"--executor {DEBUG_PERSONA}"
+        )
+
+
+DEBUG_PERSONA = "build-debug-sme"
+DEBUG_ESCALATION_THRESHOLD = 2
 
 
 class Deliverable(BaseModel):

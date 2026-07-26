@@ -109,7 +109,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
         reason = findings[0] if findings else "no reason"
         update_wp_state(root_path, wp_id, WPState.BLOCKED,
                         by="build-dev-orchestrator",
-                        event=f"code-review reject: {reason}")
+                        event=f"code-review reject: {reason}",
+                        failure=True)
         _write_audit(root_path, wp, time.monotonic() - start,
                      "rejected_by_code_review", diff_path,
                      code_review_verdict=code_review_verdict,
@@ -144,7 +145,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
     if check.returncode != 0:
         update_wp_state(root_path, wp_id, WPState.BLOCKED,
                         by="build-dev-orchestrator",
-                        event=f"git apply --check failed: {check.stderr.strip()}")
+                        event=f"git apply --check failed: {check.stderr.strip()}",
+                        failure=True)
         _write_audit(root_path, wp, time.monotonic() - start, "check_failed",
                      diff_path, notes=check.stderr.strip())
         render_dashboard(root_path)
@@ -158,7 +160,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
     if apply.returncode != 0:
         update_wp_state(root_path, wp_id, WPState.BLOCKED,
                         by="build-dev-orchestrator",
-                        event=f"git apply failed unexpectedly: {apply.stderr.strip()}")
+                        event=f"git apply failed unexpectedly: {apply.stderr.strip()}",
+                        failure=True)
         _write_audit(root_path, wp, time.monotonic() - start, "apply_failed",
                      diff_path, notes=apply.stderr.strip())
         render_dashboard(root_path)
@@ -183,7 +186,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
         if test_status != "passed":
             update_wp_state(root_path, wp_id, WPState.BLOCKED,
                             by="build-qa-sme",
-                            event=f"tests {test_status} after apply (see audit)")
+                            event=f"tests {test_status} after apply (see audit)",
+                            failure=True)
             _write_audit(root_path, wp, time.monotonic() - start,
                          f"tests_{test_status}", diff_path,
                          tests_run=[(config.project.test_command, test_status)],

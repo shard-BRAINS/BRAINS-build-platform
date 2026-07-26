@@ -143,8 +143,15 @@ def update_wp_state(
     by: str,
     event: str,
     at: str | None = None,
+    failure: bool = False,
 ) -> WorkPackage:
     """Mutate a WP's state by appending a history event; rewrite the JSONL line.
+
+    Set ``failure=True`` when the transition records a failed execution attempt
+    (dispatch error, code-review reject, failed apply, failed tests, QA fail).
+    It increments ``wp.failures``, which drives Debug SME escalation. Pass it
+    only for genuine attempt failures — inflating the count escalates work that
+    was never actually tried.
 
     Returns the updated WorkPackage.
     """
@@ -163,6 +170,7 @@ def update_wp_state(
             wp = wp.model_copy(update={
                 "state": new_state,
                 "history": [*wp.history, WPHistoryEvent(at=at, by=by, event=event)],
+                "failures": wp.failures + 1 if failure else wp.failures,
             })
             updated = wp
         out_lines.append(json.dumps(wp.model_dump(mode="json"), separators=(",", ":")))

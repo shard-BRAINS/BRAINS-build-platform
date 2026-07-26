@@ -38,8 +38,12 @@ def _err(msg: str, as_json: bool, code: int) -> None:
 )
 @click.option("--by", required=True, help="Persona id or user:NAME performing the transition.")
 @click.option("--reason", required=True, help="One-line reason; recorded in history + audit.")
+@click.option("--failure", is_flag=True,
+              help="Record this transition as a failed execution attempt. Increments "
+                   "the WP's failure count, which triggers Debug SME escalation at 2. "
+                   "Use for QA failures and unreproducible executor results.")
 @click.option("--json", "as_json", is_flag=True)
-def transition_cmd(root, wp_id, target, by, reason, as_json):
+def transition_cmd(root, wp_id, target, by, reason, failure, as_json):
     """Move a WP to any target state (escape hatch — no state-machine guard)."""
     root_path = Path(root).resolve() if root else find_brains_build_root()
     wps = load_wp_state(root_path)
@@ -61,7 +65,8 @@ def transition_cmd(root, wp_id, target, by, reason, as_json):
     event = f"manual transition {from_state} -> {target_state.value} by {by}: {reason}"
 
     start = time.monotonic()
-    update_wp_state(root_path, wp_id, target_state, by=by, event=event)
+    updated = update_wp_state(root_path, wp_id, target_state, by=by, event=event,
+                              failure=failure)
 
     write_audit(root_path, AuditEntry(
         wp_id=wp.id,
@@ -84,11 +89,16 @@ def transition_cmd(root, wp_id, target, by, reason, as_json):
         "from_state": from_state,
         "new_state": target_state.value,
         "reason": reason,
+        "failures": updated.failures,
     }
+    if updated.needs_debug_escalation():
+        payload["escalation"] = updated.debug_escalation_notice()
     if as_json:
         click.echo(json.dumps(payload))
     else:
         click.echo(f"{wp_id}: {from_state} -> {target_state.value}. Reason: {reason}")
+        if "escalation" in payload:
+            click.echo(payload["escalation"])
     sys.exit(0)
 
 

@@ -104,13 +104,13 @@ You are the Product Owner. The Business Analyst serves you — it turns your int
 
 | Persona | Tier | Owns |
 |---|---|---|
-| ![PMO](https://img.shields.io/badge/-PMO%20Lead-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Backlog state, sprint cadence, blocker escalation, dashboard refresh, scrum recap |
+| ![PMO](https://img.shields.io/badge/-PMO%20Lead-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Backlog state, sprint cadence, blocker escalation, dashboards, project documentation, tracking, cost/burn rollup |
 | ![Dev Orch](https://img.shields.io/badge/-Dev%20Orchestrator-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Deliverables → work packages, tier-1/tier-2 tagging, technical coherence, executor sign-off |
 | ![Analyst](https://img.shields.io/badge/-Business%20Analyst-D99518?style=flat-square&labelColor=0A0A0A) | Opus | Requirements elicitation, deliverable definitions, testable acceptance criteria, scope guard |
 | ![Frontend](https://img.shields.io/badge/-Frontend%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | UI components, styles, frontend tests, accessibility |
 | ![Backend](https://img.shields.io/badge/-Backend%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Services, APIs, data layer, backend tests |
 | ![Code Review](https://img.shields.io/badge/-Code%20Review%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Read-only review: architectural fit, style, codebase consistency before QA |
-| ![QA](https://img.shields.io/badge/-QA%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Acceptance verification, integration/E2E tests, regression matrices, bug repro |
+| ![QA](https://img.shields.io/badge/-QA%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Acceptance verification, integration/E2E tests, regression matrices |
 | ![Security](https://img.shields.io/badge/-Security%20SME-2A8B91?style=flat-square&labelColor=0A0A0A) | Sonnet | Read-only audit: secret scan, dep audit, OWASP review, threat surface |
 | ![DevOps](https://img.shields.io/badge/-DevOps%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | CI/CD config, build scripts, deploy manifests, environment management |
 | ![Debug](https://img.shields.io/badge/-Debug%20SME-4DA8FF?style=flat-square&labelColor=0A0A0A) | Sonnet | Fault isolation: reproduce, bisect to root cause, prove the diagnosis, fix minimally with a regression test |
@@ -134,6 +134,8 @@ A work package is tier-1 only if **all four** hold:
 
 Everything else. `/build-dispatch` writes a brief to `.brains-build/runs/<wp-id>/tier2-brief.md`, then spawns the named executor SME subagent. The SME reads the brief, edits code, runs tests, and returns a result block. The **Code Review SME** then makes a read-only pass for fit and style. QA verifies acceptance. Security runs in parallel on sensitive WPs, such as auth, data, and dependencies.
 
+When a WP fails twice, it stops being an implementation problem. The **Debug SME** takes it over — reproduce, bisect, prove the cause by toggling it, then fix minimally with a test that fails without the fix. It may report the cause as unproven, which blocks the WP rather than shipping a guess.
+
 ### The code-review gate
 
 After tier-2 work — and on tier-1 in `review-on-complete` or `auto` mode — the Code-Review SME returns a verdict. `dispatch_apply` records it in the audit entry. The loop then respects it:
@@ -152,7 +154,7 @@ If a tier-1 dispatch fails twice, Ollama has used up its retries. `/build-dispat
 
 ### The weekly scrum
 
-`/build-scrum` works out the diff since the last scrum and writes a recap stub. Then it spawns the **PMO Lead** to fill in Progress, Blockers, Velocity, Re-prioritization, and Next-up. Anything that needs your input shows as a `[USER ACTION]` block at the top of the recap.
+`/build-scrum` works out the diff since the last scrum and writes a recap stub. Then it spawns the **PMO Lead** to fill in Progress, Blockers, Velocity, Cost, Re-prioritization, and Next-up. Anything that needs your input shows as a `[USER ACTION]` block at the top of the recap.
 
 ---
 

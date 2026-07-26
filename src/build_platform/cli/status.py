@@ -24,6 +24,8 @@ def status_cmd(root, wp, as_json):
             click.echo(json.dumps({"error": f"WP {wp} not found"}) if as_json else f"WP {wp} not found", err=True)
             sys.exit(1)
         payload = match.model_dump(mode="json")
+        if match.needs_debug_escalation():
+            payload["escalation"] = match.debug_escalation_notice()
         click.echo(json.dumps(payload) if as_json else _human(match))
         return
     counts = Counter(w.state for w in wps)
@@ -42,14 +44,17 @@ def status_cmd(root, wp, as_json):
 
 
 def _human(wp) -> str:
-    return (
+    out = (
         f"{wp.id} · {wp.title}\n"
         f"  workstream: {wp.workstream} · deliverable: {wp.deliverable_id}\n"
         f"  tier: {wp.tier.value} · state: {wp.state.value} · persona: {wp.executor_persona}\n"
         f"  spec: {wp.spec}\n"
         f"  acceptance: {'; '.join(wp.acceptance)}\n"
-        f"  history: {len(wp.history)} events"
+        f"  history: {len(wp.history)} events · failures: {wp.failures}"
     )
+    if wp.needs_debug_escalation():
+        out += f"\n  ESCALATION: {wp.debug_escalation_notice()}"
+    return out
 
 
 if __name__ == "__main__":

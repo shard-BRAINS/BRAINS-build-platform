@@ -53,6 +53,7 @@ def scrum_cmd(root, as_json):
         f"## Progress\n_TO BE FILLED BY build-pmo-lead subagent_\n\n"
         f"## Blockers\n_TO BE FILLED_\n\n"
         f"## Velocity\n_TO BE FILLED_\n\n"
+        f"## Cost\n_TO BE FILLED — spend this sprint from audit/index.jsonl, against WPs completed_\n\n"
         f"## Re-prioritization\n_TO BE FILLED_\n\n"
         f"## Next up\n_TO BE FILLED_\n",
         encoding="utf-8",
@@ -66,8 +67,8 @@ def scrum_cmd(root, as_json):
         click.echo(json.dumps(payload))
     else:
         click.echo(f"Scrum brief generated for sprint {sprint_n}.\n"
-                   f"Recap stub: {recap_path}\n"
-                   f"Next: spawn build-pmo-lead subagent to fill it in.")
+             f"Recap stub: {recap_path}\n"
+             f"Next: spawn build-pmo-lead subagent to fill it in.")
 
 
 if __name__ == "__main__":

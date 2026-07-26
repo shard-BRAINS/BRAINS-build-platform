@@ -55,7 +55,7 @@ def request_changes(project_root: Path, wp_id: str, findings_file: Path) -> dict
     start = time.monotonic()
     event = f"code-review request-changes: {first_line}"
     update_wp_state(project_root, wp_id, WPState.DEFINED,
-                    by="build-code-review-sme", event=event)
+                    by="build-code-review-sme", event=event, failure=True)
 
     write_audit(project_root, AuditEntry(
         wp_id=wp.id,

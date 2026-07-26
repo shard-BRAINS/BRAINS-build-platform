@@ -23,8 +23,11 @@ from build_platform.state import load_config, load_wp_state, update_wp_state
 @click.command("dispatch")
 @click.option("--root", type=click.Path(file_okay=False), default=None)
 @click.option("--wp", "wp_id", required=True, help="WP id to dispatch.")
+@click.option("--force", is_flag=True,
+              help="Dispatch even after two failed attempts, bypassing Debug SME "
+                   "escalation. Use only when the failures were environmental.")
 @click.option("--json", "as_json", is_flag=True)
-def dispatch_cmd(root, wp_id, as_json):
+def dispatch_cmd(root, wp_id, force, as_json):
     root_path = Path(root).resolve() if root else find_brains_build_root()
     config = load_config(root_path)
     wps = load_wp_state(root_path)
@@ -36,6 +39,12 @@ def dispatch_cmd(root, wp_id, as_json):
     unmet = [dep for dep in wp.depends_on if wps.get(dep) is None or wps[dep].state != WPState.DONE]
     if unmet:
         _err(f"WP {wp_id} blocked by unmet deps: {unmet}", as_json, 1)
+    # Two failures means the problem is not the one being solved. Refuse the
+    # third identical attempt; --force is the escape hatch when the caller
+    # knows the failures were environmental.
+    if wp.needs_debug_escalation() and not force:
+        _err(wp.debug_escalation_notice(
+            extra="Override with --force if the failures were environmental."), as_json, 7)
 
     start = time.monotonic()
     if wp.tier == WPTier.ONE:
@@ -51,7 +60,8 @@ def dispatch_cmd(root, wp_id, as_json):
             diff_path, metrics = dispatch_tier1(root_path, wp, client)
         except DispatchError as e:
             update_wp_state(root_path, wp_id, WPState.BLOCKED,
-                            by="build-dev-orchestrator", event=f"tier-1 dispatch failed: {e}")
+                            by="build-dev-orchestrator", event=f"tier-1 dispatch failed: {e}",
+                            failure=True)
             render_dashboard(root_path)
             suggested = getattr(e, "suggested_action", None)
             _err_dispatch(str(e), as_json, 3, suggested_action=suggested)

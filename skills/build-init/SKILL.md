@@ -37,7 +37,7 @@ python -m build_platform.cli.init `
 
 - `.brains-build/project.yml` — project context
 - `.brains-build/deliverables.yml` — deliverables with acceptance criteria
-- `.brains-build/workstreams.yml` — default 5 workstreams (backend, frontend, qa, security, devops)
+- `.brains-build/workstreams.yml` — default 6 workstreams (backend, frontend, qa, debug, security, devops)
 - `.brains-build/config.yml` — Ollama URL + default models + project test command
 - `.brains-build/work-packages.jsonl` — empty
 - `.brains-build/decisions.md` — seeded with the init event
@@ -45,4 +45,5 @@ python -m build_platform.cli.init `
 ## Don't
 
 - Don't write any of these files directly via Write/Edit. Always go through the CLI so schema validation runs.
-- Don't skip the Product Owner spawn even when inputs look clean — they shape the YAML, you don't.
+- Don't skip the Business Analyst spawn even when inputs look clean — it shapes the YAML, you don't.
+- Don't let the analyst resolve a product question. Anything it cannot derive from what the user said surfaces as `[USER ACTION]` for the user to decide.

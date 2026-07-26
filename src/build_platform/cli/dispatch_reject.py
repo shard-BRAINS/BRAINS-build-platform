@@ -51,8 +51,12 @@ def reject_cmd(root, wp_id, reason, retier, as_json):
              else f"rejected by Dev Orchestrator: {reason}")
 
     start = time.monotonic()
+    # --retier is a re-classification, not a failed attempt: the tier-1 work was
+    # sound, the WP was simply packaged at the wrong tier. Counting it would
+    # escalate WPs to the Debug SME for a packaging mistake.
     update_wp_state(root_path, wp_id, target,
-                    by="build-dev-orchestrator", event=event)
+                    by="build-dev-orchestrator", event=event,
+                    failure=not retier)
 
     write_audit(root_path, AuditEntry(
         wp_id=wp.id,
