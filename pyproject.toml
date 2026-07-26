@@ -18,11 +18,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# ruff is capped below 0.16: that release turns on stylistic rules (UP017,
-# I001, C408, ...) the project never opted into, which would fail CI on a
-# codebase that was clean under the pinned range. Lift the cap deliberately,
-# with the fixes, not by accident on a linter release.
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-mock>=3.12", "ruff>=0.4,<0.16"]
+# ruff is unpinned again: the lint ruleset is fixed explicitly under
+# [tool.ruff.lint] below, so a new ruff version can no longer change what is
+# enforced by expanding its defaults. The <0.16 cap that guarded against that
+# is no longer needed.
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-mock>=3.12", "ruff>=0.4"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -41,3 +41,10 @@ pythonpath = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+# Pin the ruleset explicitly rather than inheriting ruff's default, which
+# expands between releases (0.16 added UP, I, PLW, BLE, ... and broke CI on a
+# codebase that was clean before). E + F is what this project has always
+# enforced. Adopting more rules is a deliberate edit here, not a linter upgrade.
+select = ["E4", "E7", "E9", "F"]
