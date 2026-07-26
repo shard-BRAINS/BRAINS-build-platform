@@ -4,6 +4,8 @@ Every `build-*` skill is a thin orchestration layer that calls one of these CLI 
 
 All CLIs accept `--root <path>` (defaults to `.brains-build/` discovered upward from cwd) and `--json` (machine-readable output). All emit non-zero exit codes on error and a `{"error": "..."}` JSON payload when `--json` is set.
 
+**Output encoding.** Files under `.brains-build/` are UTF-8 and stay typeset. Terminal output goes through `build_platform.console.echo`, which checks what the destination stream can actually encode: on a UTF-8 terminal the text is emitted verbatim, and on a legacy Windows code page (cp1252, cp437) characters that code page lacks are transliterated to ASCII — `—` to `--`, `→` to `->`, `✓` to `OK`. Only the terminal copy degrades. Anything not covered by the table falls back to ASCII rather than emitting replacement characters, so `--json` output stays parseable on any console. New CLI code should call `console.echo`, not `click.echo`; `--help` text is printed by Click itself and so must stay ASCII at the source.
+
 ---
 
 ## `python -m build_platform.cli.init`

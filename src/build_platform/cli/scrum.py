@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.git_utils import commits_since
 from build_platform.paths import find_brains_build_root
 from build_platform.render_dashboard import render_dashboard
@@ -64,9 +65,9 @@ def scrum_cmd(root, as_json):
                "recap_stub": str(recap_path),
                "next": "Spawn build-pmo-lead subagent to fill in the recap stub."}
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"Scrum brief generated for sprint {sprint_n}.\n"
+        echo(f"Scrum brief generated for sprint {sprint_n}.\n"
              f"Recap stub: {recap_path}\n"
              f"Next: spawn build-pmo-lead subagent to fill it in.")
 

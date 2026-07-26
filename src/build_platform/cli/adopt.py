@@ -9,6 +9,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.survey import render_survey, survey_repo, write_survey
 
 
@@ -23,7 +24,7 @@ def adopt_cmd(root, do_write, as_json):
     root_path = Path(root).resolve()
     if not root_path.is_dir():
         msg = f"Not a directory: {root_path}"
-        click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+        echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
         sys.exit(1)
 
     survey = survey_repo(root_path)
@@ -37,19 +38,18 @@ def adopt_cmd(root, do_write, as_json):
         }
 
     if as_json:
-        click.echo(json.dumps({"ok": True, "survey": survey, "written": written}))
+        echo(json.dumps({"ok": True, "survey": survey, "written": written}))
         sys.exit(0)
 
     # The brief is typeset markdown (em-dashes, arrows) and the file on disk is
     # UTF-8, but a Windows console is often cp1252 and would raise on those
-    # characters. Degrade the terminal copy rather than crash the command.
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(errors="replace")
-    click.echo(render_survey(survey))
+    # characters. echo() transliterates them for the terminal copy; the file
+    # keeps its typography.
+    echo(render_survey(survey))
     if written:
-        click.echo(f"\nWritten: {written['json']}, {written['md']}")
+        echo(f"\nWritten: {written['json']}, {written['md']}")
     already_initialised = (root_path / ".brains-build" / "project.yml").exists()
-    click.echo(
+    echo(
         "\nNext: spawn build-business-analyst with this survey to propose deliverables, "
         "then confirm them before "
         + ("updating deliverables.yml." if already_initialised else "running /build-init.")

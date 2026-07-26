@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.state import load_project, load_work_packages
 
@@ -21,12 +22,12 @@ def status_cmd(root, wp, as_json):
     if wp:
         match = next((w for w in wps if w.id == wp), None)
         if not match:
-            click.echo(json.dumps({"error": f"WP {wp} not found"}) if as_json else f"WP {wp} not found", err=True)
+            echo(json.dumps({"error": f"WP {wp} not found"}) if as_json else f"WP {wp} not found", err=True)
             sys.exit(1)
         payload = match.model_dump(mode="json")
         if match.needs_debug_escalation():
             payload["escalation"] = match.debug_escalation_notice()
-        click.echo(json.dumps(payload) if as_json else _human(match))
+        echo(json.dumps(payload) if as_json else _human(match))
         return
     counts = Counter(w.state for w in wps)
     payload = {
@@ -35,12 +36,12 @@ def status_cmd(root, wp, as_json):
         "by_state": {k.value: v for k, v in counts.items()},
     }
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"Project: {project.name}")
-        click.echo(f"Total WPs: {len(wps)}")
+        echo(f"Project: {project.name}")
+        echo(f"Total WPs: {len(wps)}")
         for state, n in counts.items():
-            click.echo(f"  {state.value}: {n}")
+            echo(f"  {state.value}: {n}")
 
 
 def _human(wp) -> str:

@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.dispatcher import (
     DispatchError,
     dispatch_tier1,
@@ -121,11 +122,11 @@ def dispatch_cmd(root, wp_id, force, as_json):
                           "next": f"Spawn {wp.executor_persona} subagent with this brief"}
 
     render_dashboard(root_path)
-    click.echo(json.dumps(result_payload) if as_json else _human(result_payload))
+    echo(json.dumps(result_payload) if as_json else _human(result_payload))
 
 
 def _err(msg: str, as_json: bool, code: int):
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
@@ -135,7 +136,7 @@ def _err_dispatch(msg: str, as_json: bool, code: int, *, suggested_action: str |
         payload: dict = {"error": msg}
         if suggested_action:
             payload["suggested_action"] = suggested_action
-        click.echo(json.dumps(payload), err=True)
+        echo(json.dumps(payload), err=True)
     else:
         lines = [f"Error: {msg}"]
         if suggested_action == "retier-to-2":
@@ -144,7 +145,7 @@ def _err_dispatch(msg: str, as_json: bool, code: int, *, suggested_action: str |
                 "`python -m build_platform.cli.dispatch_reject --wp <id> "
                 "--reason '...' --retier`"
             )
-        click.echo("\n".join(lines), err=True)
+        echo("\n".join(lines), err=True)
     sys.exit(code)
 
 

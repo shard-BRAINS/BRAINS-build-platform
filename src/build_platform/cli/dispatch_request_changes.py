@@ -12,6 +12,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root, state_dir
 from build_platform.render_dashboard import render_dashboard
 from build_platform.schemas import WPState
@@ -19,7 +20,7 @@ from build_platform.state import load_wp_state, update_wp_state
 
 
 def _err(msg: str, as_json: bool, code: int) -> None:
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
@@ -115,9 +116,9 @@ def request_changes_cmd(root, wp_id, findings_file, as_json):
         _err(str(exc), as_json, 1)
 
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(
+        echo(
             f"{wp_id} -> defined. {payload['findings_count']} finding(s) recorded."
         )
     sys.exit(0)

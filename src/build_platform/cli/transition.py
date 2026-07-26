@@ -13,6 +13,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.render_dashboard import render_dashboard
 from build_platform.schemas import WPState
@@ -22,7 +23,7 @@ _STATE_CHOICES = [s.value for s in WPState]
 
 
 def _err(msg: str, as_json: bool, code: int) -> None:
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
@@ -44,7 +45,7 @@ def _err(msg: str, as_json: bool, code: int) -> None:
                    "Use for QA failures and unreproducible executor results.")
 @click.option("--json", "as_json", is_flag=True)
 def transition_cmd(root, wp_id, target, by, reason, failure, as_json):
-    """Move a WP to any target state (escape hatch — no state-machine guard)."""
+    """Move a WP to any target state (escape hatch: no state-machine guard)."""
     root_path = Path(root).resolve() if root else find_brains_build_root()
     wps = load_wp_state(root_path)
 
@@ -94,11 +95,11 @@ def transition_cmd(root, wp_id, target, by, reason, failure, as_json):
     if updated.needs_debug_escalation():
         payload["escalation"] = updated.debug_escalation_notice()
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"{wp_id}: {from_state} -> {target_state.value}. Reason: {reason}")
+        echo(f"{wp_id}: {from_state} -> {target_state.value}. Reason: {reason}")
         if "escalation" in payload:
-            click.echo(payload["escalation"])
+            echo(payload["escalation"])
     sys.exit(0)
 
 

@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import load_audit_index
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 
 
@@ -34,7 +35,7 @@ def timeline_cmd(root, count, as_json):
     (local time) and YYYY-MM-DD HH:MM otherwise.
     """
     if count <= 0:
-        click.echo("Error: --count must be a positive integer.", err=True)
+        echo("Error: --count must be a positive integer.", err=True)
         sys.exit(1)
 
     root_path = Path(root).resolve() if root else find_brains_build_root()
@@ -42,20 +43,20 @@ def timeline_cmd(root, count, as_json):
 
     if not entries:
         if as_json:
-            click.echo("[]")
+            echo("[]")
         else:
-            click.echo("No audit entries found. Has a work package been dispatched yet?")
+            echo("No audit entries found. Has a work package been dispatched yet?")
         return
 
     by_recency = sorted(entries, key=lambda e: e.get("timestamp", ""), reverse=True)[:count]
     chronological = sorted(by_recency, key=lambda e: e.get("timestamp", ""))
 
     if as_json:
-        click.echo(json.dumps(chronological, separators=(",", ":")))
+        echo(json.dumps(chronological, separators=(",", ":")))
         return
 
     today = datetime.now().astimezone().date()
-    click.echo("--- Build Timeline ---\n")
+    echo("--- Build Timeline ---\n")
     for e in chronological:
         ts = _format_timestamp(e.get("timestamp", ""), today)
         persona = (e.get("persona") or "?")[:24]
@@ -64,7 +65,7 @@ def timeline_cmd(root, count, as_json):
         tier = e.get("tier", "?")
         runtime = float(e.get("runtime_seconds") or 0)
         cost = float(e.get("cost_usd") or 0)
-        click.echo(
+        echo(
             f"{ts:<16}  {persona:<24}  {wp:<10}  tier-{tier}  {result:<18}  {runtime:>6.0f}s  ${cost:>5.2f}"
         )
 

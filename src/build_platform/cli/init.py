@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.schemas import (
     Config,
     Deliverable,
@@ -47,12 +48,12 @@ DEFAULT_WORKSTREAMS = [
 
 def _emit(payload: dict, *, as_json: bool, exit_code: int = 0) -> None:
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
         if "error" in payload:
-            click.echo(f"Error: {payload['error']}", err=True)
+            echo(f"Error: {payload['error']}", err=True)
         else:
-            click.echo(payload.get("message", ""))
+            echo(payload.get("message", ""))
     sys.exit(exit_code)
 
 

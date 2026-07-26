@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 
 
@@ -44,7 +45,7 @@ def decision_cmd(root, title, owner, decision, why, alternatives, related_wps, a
         f.write(entry)
 
     payload = {"ok": True, "decision_date": date, "title": title}
-    click.echo(json.dumps(payload) if as_json else f"Decision logged: {title}")
+    echo(json.dumps(payload) if as_json else f"Decision logged: {title}")
 
 
 if __name__ == "__main__":

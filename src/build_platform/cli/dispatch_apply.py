@@ -23,6 +23,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root, state_dir
 from build_platform.render_dashboard import render_dashboard
 from build_platform.schemas import Autonomy, WPState
@@ -30,15 +31,15 @@ from build_platform.state import load_config, load_wp_state, update_wp_state
 
 
 def _err(msg: str, as_json: bool, code: int) -> None:
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
 def _emit_ok(payload: dict, as_json: bool, human: str, *, exit_code: int = 0) -> None:
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(human)
+        echo(human)
     sys.exit(exit_code)
 
 

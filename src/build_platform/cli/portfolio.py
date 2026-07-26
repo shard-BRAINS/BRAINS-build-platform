@@ -12,6 +12,7 @@ from pathlib import Path
 import click
 from jinja2 import Template, select_autoescape
 
+from build_platform.console import echo
 from build_platform.paths import STATE_DIR_NAME
 from build_platform.portfolio import (
     is_brains_project,
@@ -33,11 +34,11 @@ def _resolve(path: str) -> Path:
 
 def _emit(payload: dict, *, as_json: bool, exit_code: int = 0) -> None:
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     elif "error" in payload:
-        click.echo(f"Error: {payload['error']}", err=True)
+        echo(f"Error: {payload['error']}", err=True)
     else:
-        click.echo(payload.get("message", json.dumps(payload, indent=2)))
+        echo(payload.get("message", json.dumps(payload, indent=2)))
     sys.exit(exit_code)
 
 
@@ -98,11 +99,11 @@ def list_cmd(home, as_json):
                "projects": portfolio.projects,
                "registry": str(registry_path(home_path))}
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"{len(portfolio.projects)} projects in {registry_path(home_path)}:")
+        echo(f"{len(portfolio.projects)} projects in {registry_path(home_path)}:")
         for p in portfolio.projects:
-            click.echo(f"  {p}")
+            echo(f"  {p}")
 
 
 @portfolio_group.command("view")
@@ -139,7 +140,7 @@ def view_cmd(home, fmt, out, as_json):
         else:
             written["md"] = "<stdout>"
             if not as_json:
-                click.echo(rendered_md)
+                echo(rendered_md)
 
     if fmt in ("html", "both"):
         rendered_html = _load_template("portfolio.html.j2").render(**ctx)
@@ -149,10 +150,10 @@ def view_cmd(home, fmt, out, as_json):
 
     payload = {"ok": True, "count": len(rows), "written": written, "rows": rows}
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     elif fmt != "md":
         for f, p in written.items():
-            click.echo(f"{f}: {p}")
+            echo(f"{f}: {p}")
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ import click
 from click.testing import CliRunner
 
 from build_platform.audit import load_audit_index
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.render_dashboard import render_dashboard
 from build_platform.schemas import Autonomy, WPState, WPTier
@@ -55,7 +56,7 @@ def _eligible_wps(project_root: Path, verbose: bool = False) -> list:
             continue
         if wp.id in blocked:
             if verbose:
-                click.echo(f"skipping {wp.id}: code-review reject on record", err=True)
+                echo(f"skipping {wp.id}: code-review reject on record", err=True)
             continue
         unmet = [d for d in wp.depends_on if wps.get(d) is None or wps[d].state != WPState.DONE]
         if unmet:
@@ -70,7 +71,7 @@ def _eligible_wps(project_root: Path, verbose: bool = False) -> list:
               help="Maximum number of WPs to dispatch in one loop run.")
 @click.option("--dry-run", is_flag=True, help="Print the planned queue and exit without dispatching.")
 @click.option("--no-test", is_flag=True,
-              help="Skip post-apply tests. Off by default — tests are the safety net for auto mode.")
+              help="Skip post-apply tests. Off by default: tests are the safety net for auto mode.")
 @click.option("--test-timeout", type=int, default=300, show_default=True,
               help="Seconds before each apply's test command is killed.")
 @click.option("--json", "as_json", is_flag=True)
@@ -86,7 +87,7 @@ def loop_cmd(root, limit, dry_run, no_test, test_timeout, as_json):
             "dry_run": True,
             "queue": [{"id": wp.id, "title": wp.title} for wp in queue],
         }
-        click.echo(json.dumps(payload) if as_json else _fmt_queue(queue))
+        echo(json.dumps(payload) if as_json else _fmt_queue(queue))
         sys.exit(0)
 
     runner = CliRunner()
@@ -125,11 +126,11 @@ def loop_cmd(root, limit, dry_run, no_test, test_timeout, as_json):
         "reason": reason,
     }
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"Dispatched: {dispatched or 'none'}")
+        echo(f"Dispatched: {dispatched or 'none'}")
         if stopped_at:
-            click.echo(f"Stopped at {stopped_at}: {reason}", err=True)
+            echo(f"Stopped at {stopped_at}: {reason}", err=True)
 
     if stopped_at:
         sys.exit(1)
