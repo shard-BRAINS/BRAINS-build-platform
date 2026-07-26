@@ -23,6 +23,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root, state_dir
 from build_platform.render_dashboard import render_dashboard
 from build_platform.schemas import Autonomy, WPState
@@ -30,15 +31,15 @@ from build_platform.state import load_config, load_wp_state, update_wp_state
 
 
 def _err(msg: str, as_json: bool, code: int) -> None:
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
 def _emit_ok(payload: dict, as_json: bool, human: str, *, exit_code: int = 0) -> None:
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(human)
+        echo(human)
     sys.exit(exit_code)
 
 
@@ -109,7 +110,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
         reason = findings[0] if findings else "no reason"
         update_wp_state(root_path, wp_id, WPState.BLOCKED,
                         by="build-dev-orchestrator",
-                        event=f"code-review reject: {reason}")
+                        event=f"code-review reject: {reason}",
+                        failure=True)
         _write_audit(root_path, wp, time.monotonic() - start,
                      "rejected_by_code_review", diff_path,
                      code_review_verdict=code_review_verdict,
@@ -144,7 +146,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
     if check.returncode != 0:
         update_wp_state(root_path, wp_id, WPState.BLOCKED,
                         by="build-dev-orchestrator",
-                        event=f"git apply --check failed: {check.stderr.strip()}")
+                        event=f"git apply --check failed: {check.stderr.strip()}",
+                        failure=True)
         _write_audit(root_path, wp, time.monotonic() - start, "check_failed",
                      diff_path, notes=check.stderr.strip())
         render_dashboard(root_path)
@@ -158,7 +161,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
     if apply.returncode != 0:
         update_wp_state(root_path, wp_id, WPState.BLOCKED,
                         by="build-dev-orchestrator",
-                        event=f"git apply failed unexpectedly: {apply.stderr.strip()}")
+                        event=f"git apply failed unexpectedly: {apply.stderr.strip()}",
+                        failure=True)
         _write_audit(root_path, wp, time.monotonic() - start, "apply_failed",
                      diff_path, notes=apply.stderr.strip())
         render_dashboard(root_path)
@@ -183,7 +187,8 @@ def apply_cmd(root, wp_id, no_test, test_timeout, as_json,
         if test_status != "passed":
             update_wp_state(root_path, wp_id, WPState.BLOCKED,
                             by="build-qa-sme",
-                            event=f"tests {test_status} after apply (see audit)")
+                            event=f"tests {test_status} after apply (see audit)",
+                            failure=True)
             _write_audit(root_path, wp, time.monotonic() - start,
                          f"tests_{test_status}", diff_path,
                          tests_run=[(config.project.test_command, test_status)],

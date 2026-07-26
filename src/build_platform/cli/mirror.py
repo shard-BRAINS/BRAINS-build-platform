@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.github_mirror import (
     MirrorError,
     load_mirror_map,
@@ -20,11 +21,11 @@ from build_platform.state import load_config, save_config
 
 def _emit(payload: dict, *, as_json: bool, exit_code: int = 0) -> None:
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     elif "error" in payload:
-        click.echo(f"Error: {payload['error']}", err=True)
+        echo(f"Error: {payload['error']}", err=True)
     else:
-        click.echo(payload.get("message", json.dumps(payload, indent=2)))
+        echo(payload.get("message", json.dumps(payload, indent=2)))
     sys.exit(exit_code)
 
 
@@ -123,14 +124,14 @@ def status_cmd(root, as_json):
         "labels_seeded": mirror_map.labels_seeded,
     }
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"Mirror enabled: {payload['enabled']}")
+        echo(f"Mirror enabled: {payload['enabled']}")
         if payload["enabled"]:
-            click.echo(f"Repo: {payload['owner']}/{payload['repo']}")
-            click.echo(f"WPs mirrored: {payload['wps_mirrored']}")
-            click.echo(f"Sprints mirrored: {payload['sprints_mirrored']}")
-            click.echo(f"Last sync: {payload['last_synced_at'] or 'never'}")
+            echo(f"Repo: {payload['owner']}/{payload['repo']}")
+            echo(f"WPs mirrored: {payload['wps_mirrored']}")
+            echo(f"Sprints mirrored: {payload['sprints_mirrored']}")
+            echo(f"Last sync: {payload['last_synced_at'] or 'never'}")
 
 
 if __name__ == "__main__":

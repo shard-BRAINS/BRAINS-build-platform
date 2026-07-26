@@ -14,6 +14,7 @@ from pathlib import Path
 import click
 from jinja2 import Template, select_autoescape
 
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root, state_dir
 
 _VALID_ID = re.compile(r"^build-[a-z][a-z0-9-]+[a-z0-9]$")
@@ -64,11 +65,11 @@ def _global_personas_dir() -> Path:
 
 def _emit(payload: dict, *, as_json: bool, exit_code: int = 0) -> None:
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     elif "error" in payload:
-        click.echo(f"Error: {payload['error']}", err=True)
+        echo(f"Error: {payload['error']}", err=True)
     else:
-        click.echo(payload.get("message", json.dumps(payload, indent=2)))
+        echo(payload.get("message", json.dumps(payload, indent=2)))
     sys.exit(exit_code)
 
 
@@ -157,11 +158,11 @@ def list_cmd(root, as_json):
 
     payload = {"ok": True, "count": len(entries), "personas": entries}
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"{len(entries)} personas:")
+        echo(f"{len(entries)} personas:")
         for e in entries:
-            click.echo(f"  [{e['scope']:6}] {e['id']}")
+            echo(f"  [{e['scope']:6}] {e['id']}")
 
 
 @persona_group.command("install")

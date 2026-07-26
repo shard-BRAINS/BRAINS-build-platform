@@ -16,7 +16,7 @@ Run this once per project. Refuses if `.brains-build/` already exists.
    - Stack (multi-select common + free text: python, fastapi, react, postgres, ...)
    - Constraints (absolute things — "no GPL", "must run offline" — not preferences)
    - 3–5 top deliverables, each with: id (e.g., D-auth), title, why-one-line, ≥ 1 acceptance criterion
-3. **Spawn `build-product-owner`** with the gathered freeform inputs. The Product Owner produces structured YAML payloads matching the schemas; show them to the user.
+3. **Spawn `build-business-analyst`** with the gathered freeform inputs. The analyst produces structured YAML payloads matching the schemas; show them to the user, who is the Product Owner and makes the call.
 4. **Confirm with user.** Accept edits.
 5. **Run the CLI:**
 
@@ -37,7 +37,7 @@ python -m build_platform.cli.init `
 
 - `.brains-build/project.yml` — project context
 - `.brains-build/deliverables.yml` — deliverables with acceptance criteria
-- `.brains-build/workstreams.yml` — default 5 workstreams (backend, frontend, qa, security, devops)
+- `.brains-build/workstreams.yml` — default 6 workstreams (backend, frontend, qa, debug, security, devops)
 - `.brains-build/config.yml` — Ollama URL + default models + project test command
 - `.brains-build/work-packages.jsonl` — empty
 - `.brains-build/decisions.md` — seeded with the init event
@@ -45,4 +45,5 @@ python -m build_platform.cli.init `
 ## Don't
 
 - Don't write any of these files directly via Write/Edit. Always go through the CLI so schema validation runs.
-- Don't skip the Product Owner spawn even when inputs look clean — they shape the YAML, you don't.
+- Don't skip the Business Analyst spawn even when inputs look clean — it shapes the YAML, you don't.
+- Don't let the analyst resolve a product question. Anything it cannot derive from what the user said surfaces as `[USER ACTION]` for the user to decide.

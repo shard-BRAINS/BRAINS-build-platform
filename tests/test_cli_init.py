@@ -41,3 +41,19 @@ def test_init_creates_state_tree(tmp_path: Path):
     assert (tmp_path / ".brains-build" / "config.yml").exists()
     assert (tmp_path / ".brains-build" / "work-packages.jsonl").exists()
     assert (tmp_path / ".brains-build" / "decisions.md").exists()
+
+
+def test_init_seeds_a_debug_workstream(tmp_path: Path):
+    """Every executor SME owns a lane; the Debug SME's is `debug`."""
+    from build_platform.state import load_workstreams
+
+    runner = CliRunner()
+    result = runner.invoke(init_cmd, [
+        "--root", str(tmp_path),
+        "--name", "Demo", "--mission", "m", "--stack", "python",
+        "--deliverable", "D-a:Title:why:acceptance", "--json",
+    ])
+    assert result.exit_code == 0, result.output
+    by_id = {w.id: w for w in load_workstreams(tmp_path)}
+    assert set(by_id) == {"backend", "frontend", "qa", "debug", "security", "devops"}
+    assert by_id["debug"].owner_persona == "build-debug-sme"

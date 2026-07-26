@@ -76,6 +76,8 @@ The `agents/build-*.md` files are subagent definitions Claude Code spawns via th
 
 **Conservative validation.** Prefer to refuse with a clear error over silent fallback. Examples: orphan deps rejected at WP-creation time, tier-1 file-count enforced, diff structure required to start with `--- a/`.
 
+**Console output goes through `console.echo`.** Files under `.brains-build/` are UTF-8 and stay typeset; terminals are not guaranteed to be. A Windows console on cp1252 or cp437 raises `UnicodeEncodeError` on characters outside its code page — an arrow or a check mark kills the command outright. `build_platform.console.echo` transliterates only what the destination stream cannot encode, so UTF-8 terminals still get the typography. Use it instead of `click.echo`. Click prints `--help` text itself, so `help=` strings and command docstrings must be ASCII at the source. Note that `CliRunner` buffers UTF-8 and will never reproduce this class of bug — test the encoding decision directly, as `tests/test_console.py` does.
+
 **Brand-compliant output.** When generating user-facing content (dashboards, READMEs, anything stylistic), follow the BRAINS brand standards: Gold Deep `#D99518` on white (not `#FCC14D`), no italic body text, no justified text, identity-first language. The `brains-brand` skill enforces this for BRAINS-facing output.
 
 ## What NOT to do

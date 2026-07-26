@@ -129,7 +129,7 @@ def test_full_pull_loop_with_three_independent_remote_changes(tmp_path: Path, mo
         "body": (
             "bbp:decision\n"
             "title: Adopt FastAPI over Flask\n"
-            "owner: build-product-owner\n"
+            "owner: build-business-analyst\n"
             "decision: FastAPI for v2 backend\n"
             "why: async + Pydantic + OpenAPI for free\n"
             "alternatives: Flask:no async; Django:too heavy for v2\n"

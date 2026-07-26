@@ -7,6 +7,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.schemas import Autonomy, WPState, WPTier
 from build_platform.state import append_work_package_with_new_id, load_work_packages
@@ -37,7 +38,7 @@ def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
     # Reject auto autonomy for tier-2 WPs (auto-dispatch is tier-1-only).
     if autonomy == "auto" and tier == "2":
         payload = {"error": "autonomy=auto is only allowed for tier-1 WPs; tier-2 always requires review."}
-        click.echo(json.dumps(payload) if as_json else payload["error"], err=True)
+        echo(json.dumps(payload) if as_json else payload["error"], err=True)
         sys.exit(2)
 
     # Finding #1: reject orphan --depends-on IDs at WP-creation time, not at dispatch.
@@ -47,7 +48,7 @@ def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
             "error": f"Unknown WP IDs in --depends-on: {orphans}. "
                      f"Use /build-status to see existing WPs."
         }
-        click.echo(json.dumps(payload) if as_json else payload["error"], err=True)
+        echo(json.dumps(payload) if as_json else payload["error"], err=True)
         sys.exit(2)
 
     partial: dict = dict(
@@ -63,11 +64,11 @@ def package_cmd(root, title, workstream, deliverable_id, tier, executor_persona,
     if WPTier(int(tier)) == WPTier.ONE:
         if len(partial["spec_files"]) > 3:
             payload = {"error": f"Tier-1 WP must touch <= 3 files; got {len(partial['spec_files'])}"}
-            click.echo(json.dumps(payload) if as_json else payload["error"], err=True)
+            echo(json.dumps(payload) if as_json else payload["error"], err=True)
             sys.exit(2)
     wp = append_work_package_with_new_id(root_path, partial)
     payload = {"ok": True, "wp_id": wp.id}
-    click.echo(json.dumps(payload) if as_json else f"Created {wp.id}: {title}")
+    echo(json.dumps(payload) if as_json else f"Created {wp.id}: {title}")
 
 
 if __name__ == "__main__":

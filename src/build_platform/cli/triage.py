@@ -14,13 +14,14 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.state import load_wp_state
 from build_platform.triage import suggest_tier
 
 
 def _err(msg: str, as_json: bool, code: int) -> None:
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
@@ -64,16 +65,16 @@ def triage_cmd(root, wp_id, spec, spec_files, acceptance, as_json):
         result["wp_id"] = None
 
     if as_json:
-        click.echo(json.dumps(result))
+        echo(json.dumps(result))
     else:
-        click.echo(f"Suggested tier: {result['suggested_tier']}")
+        echo(f"Suggested tier: {result['suggested_tier']}")
         if result.get("wp_id") and not result.get("matches_current_tier", True):
-            click.echo(f"  (current tier on WP {result['wp_id']}: {result['current_tier']})")
-        click.echo(f"Rationale: {result['rationale']}")
-        click.echo("Criteria:")
+            echo(f"  (current tier on WP {result['wp_id']}: {result['current_tier']})")
+        echo(f"Rationale: {result['rationale']}")
+        echo("Criteria:")
         for c in result["criteria"]:
             mark = "✓" if c["pass"] else "✗"
-            click.echo(f"  {mark} {c['name']}: {c['detail']}")
+            echo(f"  {mark} {c['name']}: {c['detail']}")
     sys.exit(0)
 
 

@@ -13,6 +13,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.render_dashboard import render_dashboard
 from build_platform.schemas import WPState
@@ -22,7 +23,7 @@ _STATE_CHOICES = [s.value for s in WPState]
 
 
 def _err(msg: str, as_json: bool, code: int) -> None:
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
@@ -38,9 +39,13 @@ def _err(msg: str, as_json: bool, code: int) -> None:
 )
 @click.option("--by", required=True, help="Persona id or user:NAME performing the transition.")
 @click.option("--reason", required=True, help="One-line reason; recorded in history + audit.")
+@click.option("--failure", is_flag=True,
+              help="Record this transition as a failed execution attempt. Increments "
+                   "the WP's failure count, which triggers Debug SME escalation at 2. "
+                   "Use for QA failures and unreproducible executor results.")
 @click.option("--json", "as_json", is_flag=True)
-def transition_cmd(root, wp_id, target, by, reason, as_json):
-    """Move a WP to any target state (escape hatch — no state-machine guard)."""
+def transition_cmd(root, wp_id, target, by, reason, failure, as_json):
+    """Move a WP to any target state (escape hatch: no state-machine guard)."""
     root_path = Path(root).resolve() if root else find_brains_build_root()
     wps = load_wp_state(root_path)
 
@@ -61,7 +66,8 @@ def transition_cmd(root, wp_id, target, by, reason, as_json):
     event = f"manual transition {from_state} -> {target_state.value} by {by}: {reason}"
 
     start = time.monotonic()
-    update_wp_state(root_path, wp_id, target_state, by=by, event=event)
+    updated = update_wp_state(root_path, wp_id, target_state, by=by, event=event,
+                              failure=failure)
 
     write_audit(root_path, AuditEntry(
         wp_id=wp.id,
@@ -84,11 +90,16 @@ def transition_cmd(root, wp_id, target, by, reason, as_json):
         "from_state": from_state,
         "new_state": target_state.value,
         "reason": reason,
+        "failures": updated.failures,
     }
+    if updated.needs_debug_escalation():
+        payload["escalation"] = updated.debug_escalation_notice()
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"{wp_id}: {from_state} -> {target_state.value}. Reason: {reason}")
+        echo(f"{wp_id}: {from_state} -> {target_state.value}. Reason: {reason}")
+        if "escalation" in payload:
+            echo(payload["escalation"])
     sys.exit(0)
 
 

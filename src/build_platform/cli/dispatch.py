@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.dispatcher import (
     DispatchError,
     dispatch_tier1,
@@ -23,8 +24,11 @@ from build_platform.state import load_config, load_wp_state, update_wp_state
 @click.command("dispatch")
 @click.option("--root", type=click.Path(file_okay=False), default=None)
 @click.option("--wp", "wp_id", required=True, help="WP id to dispatch.")
+@click.option("--force", is_flag=True,
+              help="Dispatch even after two failed attempts, bypassing Debug SME "
+                   "escalation. Use only when the failures were environmental.")
 @click.option("--json", "as_json", is_flag=True)
-def dispatch_cmd(root, wp_id, as_json):
+def dispatch_cmd(root, wp_id, force, as_json):
     root_path = Path(root).resolve() if root else find_brains_build_root()
     config = load_config(root_path)
     wps = load_wp_state(root_path)
@@ -36,6 +40,12 @@ def dispatch_cmd(root, wp_id, as_json):
     unmet = [dep for dep in wp.depends_on if wps.get(dep) is None or wps[dep].state != WPState.DONE]
     if unmet:
         _err(f"WP {wp_id} blocked by unmet deps: {unmet}", as_json, 1)
+    # Two failures means the problem is not the one being solved. Refuse the
+    # third identical attempt; --force is the escape hatch when the caller
+    # knows the failures were environmental.
+    if wp.needs_debug_escalation() and not force:
+        _err(wp.debug_escalation_notice(
+            extra="Override with --force if the failures were environmental."), as_json, 7)
 
     start = time.monotonic()
     if wp.tier == WPTier.ONE:
@@ -51,7 +61,8 @@ def dispatch_cmd(root, wp_id, as_json):
             diff_path, metrics = dispatch_tier1(root_path, wp, client)
         except DispatchError as e:
             update_wp_state(root_path, wp_id, WPState.BLOCKED,
-                            by="build-dev-orchestrator", event=f"tier-1 dispatch failed: {e}")
+                            by="build-dev-orchestrator", event=f"tier-1 dispatch failed: {e}",
+                            failure=True)
             render_dashboard(root_path)
             suggested = getattr(e, "suggested_action", None)
             _err_dispatch(str(e), as_json, 3, suggested_action=suggested)
@@ -111,11 +122,11 @@ def dispatch_cmd(root, wp_id, as_json):
                           "next": f"Spawn {wp.executor_persona} subagent with this brief"}
 
     render_dashboard(root_path)
-    click.echo(json.dumps(result_payload) if as_json else _human(result_payload))
+    echo(json.dumps(result_payload) if as_json else _human(result_payload))
 
 
 def _err(msg: str, as_json: bool, code: int):
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
@@ -125,7 +136,7 @@ def _err_dispatch(msg: str, as_json: bool, code: int, *, suggested_action: str |
         payload: dict = {"error": msg}
         if suggested_action:
             payload["suggested_action"] = suggested_action
-        click.echo(json.dumps(payload), err=True)
+        echo(json.dumps(payload), err=True)
     else:
         lines = [f"Error: {msg}"]
         if suggested_action == "retier-to-2":
@@ -134,7 +145,7 @@ def _err_dispatch(msg: str, as_json: bool, code: int, *, suggested_action: str |
                 "`python -m build_platform.cli.dispatch_reject --wp <id> "
                 "--reason '...' --retier`"
             )
-        click.echo("\n".join(lines), err=True)
+        echo("\n".join(lines), err=True)
     sys.exit(code)
 
 

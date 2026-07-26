@@ -28,6 +28,22 @@ python -m build_platform.cli.package `
   --json
 ```
 
+### Picking the executor persona
+
+Match the persona to the *nature of the work*, not the file it touches:
+
+| Work | Executor |
+|---|---|
+| New or changed behaviour in services, APIs, data layer | `build-backend-sme` |
+| New or changed UI, styles, accessibility | `build-frontend-sme` |
+| Tests written to verify acceptance criteria | `build-qa-sme` |
+| CI/CD, build scripts, deploy manifests, environments | `build-devops-sme` |
+| A known failure to be diagnosed and fixed — acceptance reads "bug X no longer reproduces" | `build-debug-sme` |
+
+`build-code-review-sme` and `build-security-sme` are review roles — they run automatically in `/build-dispatch` and belong in `--consult`, not `--executor`.
+
+A bug WP goes to the Debug SME even when the fix will land in backend or frontend code. The distinguishing question is whether the cause is known: if it is, it's an implementation WP; if it isn't, it's a diagnosis WP.
+
 ### Autonomy mode
 
 Pass `--autonomy` per WP. Default is `manual` (safest).

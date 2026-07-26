@@ -1,6 +1,6 @@
 ---
 name: build-persona
-description: Register, list, or install custom personas for a BRAINS Build Platform project. Use when the user wants to add a new SME beyond the default 9 (e.g. "build-data-sme", "build-ml-sme", "build-design-sme"), list available personas, or promote a project-local persona to global.
+description: Register, list, or install custom personas for a BRAINS Build Platform project. Use when the user wants to add a new SME beyond the default 10 (e.g. "build-data-sme", "build-ml-sme", "build-design-sme"), list available personas, or promote a project-local persona to global.
 ---
 
 # Manage custom personas
@@ -56,7 +56,7 @@ Copies `.brains-build/personas/build-data-sme.md` to `~/.claude/agents/build/bui
 ## Flow when the user asks to add a persona
 
 1. Confirm the id, tier, and one-line description.
-2. Spawn `build-product-owner` if the mission/scope isn't clear yet — they're the one who shapes role definitions.
+2. Spawn `build-business-analyst` if the mission/scope isn't clear yet — they're the one who shapes role definitions.
 3. Run the `register` CLI with the gathered inputs.
 4. Show the user the generated file. Offer to install globally if it's reusable across projects.
 5. If the persona is meant to receive tier-2 WPs, no further setup is needed — `/build-package --executor <id>` will work.
@@ -70,5 +70,5 @@ Copies `.brains-build/personas/build-data-sme.md` to `~/.claude/agents/build/bui
 ## Don't
 
 - Don't edit `.brains-build/personas/*.md` by hand. Always go through the CLI so structure stays consistent.
-- Don't use ids that collide with the 9 default personas (`build-pmo-lead`, `build-dev-orchestrator`, `build-product-owner`, `build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`).
+- Don't use ids that collide with the 10 default personas (`build-pmo-lead`, `build-dev-orchestrator`, `build-business-analyst`, `build-frontend-sme`, `build-backend-sme`, `build-qa-sme`, `build-security-sme`, `build-devops-sme`, `build-code-review-sme`, `build-debug-sme`).
 - Don't install a project-specific persona globally if its mission only makes sense in that project context.

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.schemas import (
     Config,
     Deliverable,
@@ -32,7 +33,10 @@ DEFAULT_WORKSTREAMS = [
                description="UI, components, styling"),
     Workstream(id="qa", owner_persona="build-qa-sme",
                review_persona="build-pmo-lead",
-               description="Tests, regression matrices, bug repro"),
+               description="Tests, regression matrices, acceptance verification"),
+    Workstream(id="debug", owner_persona="build-debug-sme",
+               review_persona="build-dev-orchestrator",
+               description="Fault isolation: reproduce, bisect, prove the root cause, fix minimally"),
     Workstream(id="security", owner_persona="build-security-sme",
                review_persona="build-dev-orchestrator",
                description="Threat modeling, dependency audit, OWASP review"),
@@ -44,12 +48,12 @@ DEFAULT_WORKSTREAMS = [
 
 def _emit(payload: dict, *, as_json: bool, exit_code: int = 0) -> None:
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
         if "error" in payload:
-            click.echo(f"Error: {payload['error']}", err=True)
+            echo(f"Error: {payload['error']}", err=True)
         else:
-            click.echo(payload.get("message", ""))
+            echo(payload.get("message", ""))
     sys.exit(exit_code)
 
 

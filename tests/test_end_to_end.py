@@ -85,7 +85,11 @@ def test_full_loop(tmp_path: Path):
     assert r.exit_code == 0, r.output
     recap_path = Path(json.loads(r.output)["recap_stub"])
     assert recap_path.exists()
-    assert "TO BE FILLED" in recap_path.read_text(encoding="utf-8")
+    recap = recap_path.read_text(encoding="utf-8")
+    assert "TO BE FILLED" in recap
+    for section in ("## Progress", "## Blockers", "## Velocity", "## Cost",
+                    "## Re-prioritization", "## Next up"):
+        assert section in recap, f"recap stub missing {section}"
 
     # 7. Dashboard shows all sections
     r = runner.invoke(dashboard_cmd, ["--root", str(tmp_path), "--json"])

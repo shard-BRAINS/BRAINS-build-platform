@@ -60,6 +60,34 @@ What you do:
 - If code-review approved, QA verdict = pass, and Security ≠ block: mark WP `done` (update state via CLI invocation); write audit entry; refresh dashboard.
 - If QA fails: mark WP `blocked` with QA findings; refresh dashboard.
 
+### Escalating to the Debug SME
+
+A second failure on the same WP is evidence that the problem is not the one being solved. This is enforced, not left to judgement: every WP carries a `failures` count, and at 2 the dispatch CLI **refuses** with exit code 7 rather than spending a third identical attempt.
+
+```json
+{ "error": "WP-0007 has failed 2 times under build-backend-sme. Hand it to build-debug-sme ..." }
+```
+
+What increments the count: tier-1 dispatch errors, code-review reject, code-review request-changes, failed `git apply`, failed tests, and any `transition --failure`. What doesn't: `dispatch_reject --retier` (a packaging correction, not a failed attempt) and ordinary state moves.
+
+When you hit exit 7:
+
+```powershell
+python -m build_platform.cli.package_edit --root . --wp WP-XXXX --executor build-debug-sme --json
+python -m build_platform.cli.dispatch --root . --wp WP-XXXX --json
+```
+
+Then spawn `build-debug-sme` with the brief and both failure records. It returns a Diagnosis block, not a retry.
+
+Two related cases the counter cannot see on its own:
+
+- **QA fails a WP** → record it with `transition --to blocked --by build-qa-sme --failure` so the attempt actually counts. Without `--failure` the WP is blocked but the escalation never fires.
+- **The acceptance criterion is "bug X no longer reproduces"** → it should already carry `build-debug-sme` as its executor from `/build-package`. Re-assign with `package_edit` if not.
+
+`--force` bypasses the gate. Use it only when the failures were environmental (Ollama down, a dirty tree) rather than a genuine failure to solve the problem.
+
+The Debug SME may report the cause as unproven. That is a valid outcome — mark the WP `blocked` with the diagnosis and surface it to the user. A speculative fix that makes the symptom vanish is worse than a blocked WP.
+
 ### Autonomy modes (`autonomy` field on each WP)
 
 - `manual` (default) — every step pauses for user confirmation. Safest. Use for unfamiliar work or judgement-heavy tasks.
@@ -77,3 +105,5 @@ python -m build_platform.cli.dashboard --root . --json
 - Don't apply diffs without Dev Orch review.
 - Don't mark `done` without QA verdict.
 - Don't skip Security on sensitive WPs.
+- Don't `--force` past exit 7 to get moving. Two failures is the Debug SME's trigger, not a reason to try harder.
+- Don't block a WP on a QA failure without `--failure` — an uncounted failure is one the platform cannot escalate.

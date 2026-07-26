@@ -14,6 +14,7 @@ from pathlib import Path
 import click
 
 from build_platform.audit import AuditEntry, write_audit
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.render_dashboard import render_dashboard
 from build_platform.schemas import WPState
@@ -21,7 +22,7 @@ from build_platform.state import load_wp_state, update_wp_state
 
 
 def _err(msg: str, as_json: bool, code: int) -> None:
-    click.echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
+    echo(json.dumps({"error": msg}) if as_json else f"Error: {msg}", err=True)
     sys.exit(code)
 
 
@@ -51,8 +52,12 @@ def reject_cmd(root, wp_id, reason, retier, as_json):
              else f"rejected by Dev Orchestrator: {reason}")
 
     start = time.monotonic()
+    # --retier is a re-classification, not a failed attempt: the tier-1 work was
+    # sound, the WP was simply packaged at the wrong tier. Counting it would
+    # escalate WPs to the Debug SME for a packaging mistake.
     update_wp_state(root_path, wp_id, target,
-                    by="build-dev-orchestrator", event=event)
+                    by="build-dev-orchestrator", event=event,
+                    failure=not retier)
 
     write_audit(root_path, AuditEntry(
         wp_id=wp.id,
@@ -78,9 +83,9 @@ def reject_cmd(root, wp_id, reason, retier, as_json):
                  else "WP is blocked. Resolve via /build-decision or new WP."),
     }
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"{wp_id} -> {target.value}. Reason: {reason}")
+        echo(f"{wp_id} -> {target.value}. Reason: {reason}")
     sys.exit(0)
 
 

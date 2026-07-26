@@ -11,6 +11,7 @@ from pathlib import Path
 
 import click
 
+from build_platform.console import echo
 from build_platform.paths import find_brains_build_root
 from build_platform.state import load_config, load_project, save_config
 
@@ -60,7 +61,7 @@ def _build_routine_prompt(project_name: str, project_root: Path) -> str:
                    "record its id here so it can be tracked/unscheduled later.")
 @click.option("--disable", is_flag=True,
               help="Mark scrum_schedule.enabled = False in config (does NOT "
-                   "delete the remote routine — use /schedule for that).")
+                   "delete the remote routine; use /schedule for that).")
 @click.option("--json", "as_json", is_flag=True)
 def schedule_scrum_cmd(root, day, hour, minute, timezone, routine_id, disable, as_json):
     """Generate the scrum reminder routine spec and persist the schedule intent."""
@@ -93,18 +94,18 @@ def schedule_scrum_cmd(root, day, hour, minute, timezone, routine_id, disable, a
         ) if not config.scrum_schedule.routine_id else "Tracked routine recorded.",
     }
     if as_json:
-        click.echo(json.dumps(payload))
+        echo(json.dumps(payload))
     else:
-        click.echo(f"Project: {project.name}")
-        click.echo(f"Cron: {cron}  (timezone: {timezone})")
-        click.echo(f"Enabled: {config.scrum_schedule.enabled}")
+        echo(f"Project: {project.name}")
+        echo(f"Cron: {cron}  (timezone: {timezone})")
+        echo(f"Enabled: {config.scrum_schedule.enabled}")
         if config.scrum_schedule.routine_id:
-            click.echo(f"Routine id: {config.scrum_schedule.routine_id}")
-        click.echo("")
-        click.echo("Routine prompt to pass to /schedule:")
-        click.echo("-" * 60)
-        click.echo(prompt)
-        click.echo("-" * 60)
+            echo(f"Routine id: {config.scrum_schedule.routine_id}")
+        echo("")
+        echo("Routine prompt to pass to /schedule:")
+        echo("-" * 60)
+        echo(prompt)
+        echo("-" * 60)
     sys.exit(0)
 
 
