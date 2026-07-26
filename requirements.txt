@@ -38,7 +38,7 @@ rich==15.0.0
     # via build-platform (pyproject.toml)
 ruamel-yaml==0.19.1
     # via build-platform (pyproject.toml)
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   anyio
     #   pydantic
